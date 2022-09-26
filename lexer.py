@@ -1,35 +1,66 @@
 import ply.lex as lex
 
-tokens = (
-    'SPLITTER', 'ID', 'INT',
-    'LPAREN', 'RPAREN', 'ARROW', 'COMMA', 'HOLE', 'SEMI',
-    'LT', 'LE', 'GT', 'GE', 'AND', 'OR', 'NOT', 'EQ', 'NEQ',
-    'PLUS', 'MINUS', 'TIMES', 'DIV'
-)
+class SpyroSygusLexer(object):
+    reserved = {
+        'variables': 'TK_DEFINE_VARIABLES',
+        'relations': 'TK_DEFINE_RELATIONS',
+        'generator': 'TK_DEFINE_GENERATOR',
+        'example': 'TK_DEFINE_EXAMPLE',
+        'define-fun': 'TK_DEFINE_FUN',
+        'Constant': 'TK_CONSTANT'
+    }
+    
+    tokens = [
+        'TK_LPAREN',
+        'TK_RPAREN',
+        'TK_NUMERAL',
+        'TK_SYMBOL'
+    ]
 
-t_SPLITTER = r'\|'
-t_ID = r'[A-Za-z_][A-Za-z0-9_]*'
-t_INT = r'\d+'
-t_LPAREN = r'\('
-t_RPAREN = r'\)'
-t_ARROW = r'->'
-t_COMMA = r','
-t_HOLE = r'\?\?'
-t_SEMI = r';'
-t_LT = r'<'
-t_LE = r'<='
-t_GT = r'>'
-t_GE = r'>='
-t_AND = r'&&'
-t_OR = r'\|\|'
-t_NOT = r'!'
-t_EQ = r'=='
-t_NEQ = r'!='
-t_PLUS = r'\+'
-t_MINUS = r'-'
-t_TIMES = r'\*'
-t_DIV = r'/'
-t_ignore = ' \t\r\n'
+    tokens += list(set(reserved.values()))
+
+    t_TK_LPAREN = r'\('
+    t_TK_LPAREN = r'\)'
+
+    _zero = r'0'
+    _nonzero = r'[1-9]'
+    _digit = r'[0-9]'
+    _numeral = f'(?:{_zero})|(?:{_nonzero}(?:{_digit})*)'
+    _symbolcc = r'(?:[a-zA-Z_&!~<>=/%]|@|\+|-|\*|\||\?|\.|\$|\^)'
+    _symbol = f'{_symbolcc}(?:(?:{_symbolcc})|(?:{_digit}))*'
+
+    t_ignore = ' \t\f\r'
+
+    def t_newline(self, t):
+        r'\n'
+        t.lexer.lineno += 1
+
+    def t_comment(self, t):
+        r';.*'
+        pass
+
+    @ply.tex.TOKEN(_numeral)
+    def t_TK_NUMERAL(self, t):
+        t.value = int(t.value)
+        return t
+
+    @ply.tex.TOKEN(_symbol)
+    def t_TK_SYMBOL(self, t):
+        return t
+
+
+    def __init__(self):
+        self.lexer = lex.lex(object=self, debug=0)
+
+    def lex(self, input_string):
+        self.lexer.input(input_string)
+        
+        while True:
+            tok = self.lexer.token()
+            if tok in None:
+                break
+            else:
+                yield tok
 
 def t_error(t):
     print("Illegal character %s" % repr(t.value[0]))
