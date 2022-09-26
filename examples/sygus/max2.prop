@@ -1,0 +1,11 @@
+
+(variables ((Int x1) (Int x2) (Int o)))
+
+(relations ((= o (max2 x1 x2))))
+
+(generator ((AP Bool ((compare I I)))
+            (I Int (x1 x2 o))))
+
+(example ((Int ((Constant Int)))))
+
+(define-fun max2 ((x1 Int) (x2 Int)) Int (ite (<= x2 x1) x1 x2))
