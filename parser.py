@@ -9,23 +9,26 @@ class SpyroSygusParser(object):
         """program : set_logic_command variables relations generator example function_plus"""
         p[0] = [p[1], p[2], p[3], p[4], p[5], p[6]]
 
+        self._ast_root = p[0]
+
     def p_set_logic_command(self, p):
         """set_logic_command : TK_LPAREN TK_SET_LOGIC TK_SYMBOL TK_RPAREN"""
-        p[0] = TK_SYMBOL
+        p[0] = p[3]
 
     def p_variables(self, p):
         """variables : TK_LPAREN TK_DEFINE_VARIABLES TK_LPAREN variable_plus TK_RPAREN TK_RPAREN"""
-    
+        p[0] = p[4]
+
     def p_variable_plus(self, p):
         """variable_plus : variable_plus variable
                          | variable"""
         if 2 == len(p):
             p[0] = [p[1]]
         else:
-            p[0] = p[1].append(p[2])       
+            p[0] = p[1] + [p[2]]
 
     def p_variable(self, p):
-        """variable : TK_LPAREN TK_SYMBOL sort TK_RPAREN"""
+        """variable : TK_LPAREN sort symbol TK_RPAREN"""
         p[0] = [p[2], p[3]]
 
     def p_sort(self, p):
@@ -46,19 +49,30 @@ class SpyroSygusParser(object):
         if 2 == len(p):
             p[0] = [p[1]]
         else:
-            p[0] = p[1].append(p[2])    
+            p[0] = p[1] + [p[2]] 
+
+    def p_symbol(self, p):
+        """symbol : TK_SYMBOL"""
+        p[0] = ['Symbol', p[1]]
+
+    def p_numeral(self, p):
+        """numeral : TK_NUMERAL"""
+        p[0] = ['Num', p[1]]
+
+    def p_constant(self, p):
+        """constant : TK_LPAREN TK_CONSTANT sort TK_RPAREN"""
+        p[0] = ['Const', p[3]]
+
+    def p_app(self, p):
+        """app : TK_LPAREN symbol term_star TK_RPAREN"""
+        p[0] = ['App', p[2]] + p[3]
 
     def p_term(self, p):
-        """term : TK_SYMBOL
-                | TK_NUMERAL
-                | TK_LPAREN TK_SYMBOL term_star TK_RPAREN
-                | TK_LPAREN TK_CONSTANT sort TK_RPAREN"""
-        
-        if 2 == len(p):
-            p[0] = [p[1]]
-        else:
-            p[0] = [p[2]] + p[3]
-        
+        """term : symbol
+                | numeral
+                | app
+                | constant"""
+        p[0] = p[1]       
 
     def p_relations(self, p):
         """relations : TK_LPAREN TK_DEFINE_RELATIONS TK_LPAREN relation_plus TK_RPAREN TK_RPAREN"""
@@ -70,7 +84,7 @@ class SpyroSygusParser(object):
         if 2 == len(p):
             p[0] = [p[1]]
         else:
-            p[0] = p[1].append(p[2])
+            p[0] = p[1] + [p[2]]
     
     def p_relation(self, p):
         """relation : term"""
@@ -86,10 +100,10 @@ class SpyroSygusParser(object):
         if 2 == len(p):
             p[0] = [p[1]]
         else:
-            p[0] = p[1].append(p[2])
+            p[0] = p[1] + [p[2]]
 
     def p_rule(self, p):
-        """rule : TK_LPAREN TK_SYMBOL sort TK_LPAREN term_plus TK_RPAREN TK_RPAREN"""
+        """rule : TK_LPAREN symbol sort TK_LPAREN term_plus TK_RPAREN TK_RPAREN"""
         p[0] = [p[2], p[3], p[5]]
     
     def p_example(self, p):
@@ -102,7 +116,7 @@ class SpyroSygusParser(object):
         if 2 == len(p):
             p[0] = [p[1]]
         else:
-            p[0] = p[1].append(p[2])
+            p[0] = p[1] + [p[2]]
     
     def p_ex_rule(self, p):
         """ex_rule : TK_LPAREN sort TK_LPAREN term_plus TK_RPAREN TK_RPAREN"""
@@ -114,10 +128,10 @@ class SpyroSygusParser(object):
         if 2 == len(p):
             p[0] = [p[1]]
         else:
-            p[0] = p[1].append(p[2])
+            p[0] = p[1] + [p[2]]
 
     def p_function(self, p):
-        """function : TK_LPAREN TK_DEFINE_FUN TK_SYMBOL TK_LPAREN arg_plus TK_RPAREN sort term_plus TK_RPAREN"""
+        """function : TK_LPAREN TK_DEFINE_FUN symbol TK_LPAREN arg_plus TK_RPAREN sort term_plus TK_RPAREN"""
         p[0] = [p[2], p[3], p[5], p[7], p[8]]
     
     def p_arg_plus(self, p):
@@ -126,10 +140,10 @@ class SpyroSygusParser(object):
         if 2 == len(p):
             p[0] = [p[1]]
         else:
-            p[0] = p[1].append(p[2])          
+            p[0] = p[1] + [p[2]]        
 
     def p_arg(self, p):
-        """arg : TK_LPAREN TK_SYMBOL sort TK_RPAREN"""
+        """arg : TK_LPAREN symbol sort TK_RPAREN"""
         p[0] = [p[2], p[3]]
 
     def p_error(self, p):

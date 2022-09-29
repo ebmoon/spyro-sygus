@@ -5,8 +5,8 @@ class TemplateParser():
     def __init__(self, template):
         self.parser = SpyroSygusParser()
 
-        print(parser.parse(template))
-        return parser.parse(template)
+        print(self.parser.parse(template))
+        return self.parser.parse(template)
 
     def __split_section_from_code(self, code, section_name):
         target = section_name
