@@ -1,6 +1,6 @@
-import ply.yacc as yacc
+import ply.yacc
 
-from .lexer import SpyroSygusLexer
+from lexer import SpyroSygusLexer
 
 class SpyroSygusParser(object):
     tokens = SpyroSygusLexer.tokens
@@ -50,6 +50,7 @@ class SpyroSygusParser(object):
 
     def p_term(self, p):
         """term : TK_SYMBOL
+                | TK_NUMERAL
                 | TK_LPAREN TK_SYMBOL term_star TK_RPAREN
                 | TK_LPAREN TK_CONSTANT sort TK_RPAREN"""
         
@@ -109,7 +110,7 @@ class SpyroSygusParser(object):
 
     def p_function_plus(self, p):
         """function_plus : function_plus function
-                         | funciton"""
+                         | function"""
         if 2 == len(p):
             p[0] = [p[1]]
         else:
@@ -119,3 +120,41 @@ class SpyroSygusParser(object):
         """function : TK_LPAREN TK_DEFINE_FUN TK_SYMBOL TK_LPAREN arg_plus TK_RPAREN sort term_plus TK_RPAREN"""
         p[0] = [p[2], p[3], p[5], p[7], p[8]]
     
+    def p_arg_plus(self, p):
+        """arg_plus : arg_plus arg
+                    | arg"""
+        if 2 == len(p):
+            p[0] = [p[1]]
+        else:
+            p[0] = p[1].append(p[2])          
+
+    def p_arg(self, p):
+        """arg : TK_LPAREN TK_SYMBOL sort TK_RPAREN"""
+        p[0] = [p[2], p[3]]
+
+    def p_error(self, p):
+        if p:
+            print("Parsing error at '%s'" % p.value)
+        else:
+            print("Parsing error at EOF")
+
+    def __init__(self):
+        self.parser = ply.yacc.yacc(debug=False, module=self, start="program")
+        self.input_string = None
+        self.lexer = None
+        self._ast_root = None
+    
+    def _parse(self, reset: bool = True):
+        self.parser.parse(self.input_string, lexer=self.lexer.lexer)
+        if not reset:
+            return self._ast_root
+        self.input_string = None
+        result = self._ast_root
+        self._ast_root = None
+        return result
+
+    def parse(self, input_string):
+        self.input_string = input_string
+        self.lexer = SpyroSygusLexer()
+        return self._parse()
+

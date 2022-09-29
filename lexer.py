@@ -1,8 +1,8 @@
-import ply.lex as lex
+import ply.lex
 
 class SpyroSygusLexer(object):
     reserved = {
-        'set_logic': 'TK_SET_LOGIC'
+        'set-logic': 'TK_SET_LOGIC',
         'variables': 'TK_DEFINE_VARIABLES',
         'relations': 'TK_DEFINE_RELATIONS',
         'generator': 'TK_DEFINE_GENERATOR',
@@ -21,7 +21,7 @@ class SpyroSygusLexer(object):
     tokens += list(set(reserved.values()))
 
     t_TK_LPAREN = r'\('
-    t_TK_LPAREN = r'\)'
+    t_TK_RPAREN = r'\)'
 
     _zero = r'0'
     _nonzero = r'[1-9]'
@@ -40,19 +40,18 @@ class SpyroSygusLexer(object):
         r';.*'
         pass
 
-    @ply.tex.TOKEN(_numeral)
+    @ply.lex.TOKEN(_numeral)
     def t_TK_NUMERAL(self, t):
         t.value = int(t.value)
         return t
 
-    @ply.tex.TOKEN(_symbol)
+    @ply.lex.TOKEN(_symbol)
     def t_TK_SYMBOL(self, t):
         t.type = self.reserved.get(t.value, 'TK_SYMBOL')
         return t
 
-
     def __init__(self):
-        self.lexer = lex.lex(object=self, debug=0)
+        self.lexer = ply.lex.lex(object=self, debug=0)
 
     def lex(self, input_string):
         self.lexer.input(input_string)
@@ -64,8 +63,6 @@ class SpyroSygusLexer(object):
             else:
                 yield tok
 
-def t_error(t):
-    print("Illegal character %s" % repr(t.value[0]))
-    t.lexer.skip(1)
-
-lexer = lex.lex(debug=0)
+    def t_error(self, t):
+        print("Illegal character %s" % repr(t.value[0]))
+        t.lexer.skip(1)

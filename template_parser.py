@@ -1,22 +1,12 @@
 import lexer
-import generator_rule_parser
-import example_rule_parser
+from parser import SpyroSygusParser
 
 class TemplateParser():
     def __init__(self, template):
-        # Split input code into three parts
-        template, variable_section = self.__split_section_from_code(template, 'var')
-        template, relation_section = self.__split_section_from_code(template, 'relation')
-        template, generator_section = self.__split_section_from_code(template, 'generator')
-        template, example_section = self.__split_section_from_code(template, 'example')
+        self.parser = SpyroSygusParser()
 
-        self.__implenetation = template
-        self.__var_decls = self.__split_var_section(variable_section)
-        self.__int_decls = [(typ, symbol) for typ, symbol in self.__var_decls if typ == 'int']
-        self.__relations = self.__split_relation_section(relation_section)
-        self.__generators = self.__split_generator_section(generator_section)
-        self.__example_generators = self.__split_example_section(example_section)
-        self.__structs = self.__split_struct_definitions(template)
+        print(parser.parse(template))
+        return parser.parse(template)
 
     def __split_section_from_code(self, code, section_name):
         target = section_name
