@@ -1,9 +1,11 @@
 
+(set-logic LIA)
+
 (variables ((Int x1) (Int x2) (Int o)))
 
 (relations ((= o (max2 x1 x2))))
 
-(generator ((AP Bool ((compare I I)))
+(generator ((AP Bool ((= I I) (<= I I) (>= I I) (> I I) (< I I) (distinct I I)))
             (I Int (x1 x2 o))))
 
 (example ((Int ((Constant Int)))))

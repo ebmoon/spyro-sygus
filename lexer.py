@@ -2,6 +2,7 @@ import ply.lex as lex
 
 class SpyroSygusLexer(object):
     reserved = {
+        'set_logic': 'TK_SET_LOGIC'
         'variables': 'TK_DEFINE_VARIABLES',
         'relations': 'TK_DEFINE_RELATIONS',
         'generator': 'TK_DEFINE_GENERATOR',
@@ -46,6 +47,7 @@ class SpyroSygusLexer(object):
 
     @ply.tex.TOKEN(_symbol)
     def t_TK_SYMBOL(self, t):
+        t.type = self.reserved.get(t.value, 'TK_SYMBOL')
         return t
 
 
