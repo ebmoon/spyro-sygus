@@ -50,19 +50,19 @@ class SpyroSygusParser(object):
 
     def p_symbol(self, p):
         """symbol : TK_SYMBOL"""
-        p[0] = ['Symbol', p[1]]
+        p[0] = IdentifierTerm(p[1])
 
     def p_numeral(self, p):
         """numeral : TK_NUMERAL"""
-        p[0] = ['Num', Int(p[1])]
+        p[0] = NumeralTerm(p[1])
 
     def p_constant(self, p):
         """constant : TK_LPAREN TK_CONSTANT sort TK_RPAREN"""
-        p[0] = ['Const', p[3]]
+        p[0] = ConstantTerm(p[3])
 
     def p_app(self, p):
         """app : TK_LPAREN symbol term_star TK_RPAREN"""
-        p[0] = ['App', p[2]] + p[3]
+        p[0] = FunctionApplicationTerm(p[2], p[3])
 
     def p_term(self, p):
         """term : symbol
