@@ -1,6 +1,8 @@
 (set-logic LIA)
 
-(variables ((Int x1) (Int x2) (Int o)))
+(define-var x1 Int (Constant Int))
+(define-var x2 Int (Constant Int))
+(define-var o Int (Constant Int))
 
 (relations ((= o (max2 x1 x2))))
 

@@ -6,18 +6,14 @@ class SpyroSygusParser(object):
     tokens = SpyroSygusLexer.tokens
 
     def p_program(self, p):
-        """program : set_logic_command variables relations generator example function_plus"""
+        """program : set_logic_command variable_plus relation_plus generator function_plus"""
         p[0] = [p[1], p[2], p[3], p[4], p[5], p[6]]
 
-        self._ast_root = p[0]
+        self._ast_root = 
 
     def p_set_logic_command(self, p):
         """set_logic_command : TK_LPAREN TK_SET_LOGIC TK_SYMBOL TK_RPAREN"""
         p[0] = p[3]
-
-    def p_variables(self, p):
-        """variables : TK_LPAREN TK_DEFINE_VARIABLES TK_LPAREN variable_plus TK_RPAREN TK_RPAREN"""
-        p[0] = p[4]
 
     def p_variable_plus(self, p):
         """variable_plus : variable_plus variable
@@ -28,7 +24,7 @@ class SpyroSygusParser(object):
             p[0] = p[1] + [p[2]]
 
     def p_variable(self, p):
-        """variable : TK_LPAREN sort symbol TK_RPAREN"""
+        """variable : TK_LPAREN TK_DEFINE_VARIABLE symbol sort term TK_RPAREN"""
         p[0] = [p[2], p[3]]
 
     def p_sort(self, p):
@@ -57,7 +53,7 @@ class SpyroSygusParser(object):
 
     def p_numeral(self, p):
         """numeral : TK_NUMERAL"""
-        p[0] = ['Num', p[1]]
+        p[0] = ['Num', Int(p[1])]
 
     def p_constant(self, p):
         """constant : TK_LPAREN TK_CONSTANT sort TK_RPAREN"""
@@ -73,10 +69,6 @@ class SpyroSygusParser(object):
                 | app
                 | constant"""
         p[0] = p[1]       
-
-    def p_relations(self, p):
-        """relations : TK_LPAREN TK_DEFINE_RELATIONS TK_LPAREN relation_plus TK_RPAREN TK_RPAREN"""
-        p[0] = p[4]
     
     def p_relation_plus(self, p):
         """relation_plus : relation_plus relation
@@ -87,7 +79,7 @@ class SpyroSygusParser(object):
             p[0] = p[1] + [p[2]]
     
     def p_relation(self, p):
-        """relation : term"""
+        """relation : TK_LPAREN TK_DEFINE_RELATION term TK_RPAREN"""
         p[0] = p[1]
 
     def p_generator(self, p):
@@ -105,22 +97,6 @@ class SpyroSygusParser(object):
     def p_rule(self, p):
         """rule : TK_LPAREN symbol sort TK_LPAREN term_plus TK_RPAREN TK_RPAREN"""
         p[0] = [p[2], p[3], p[5]]
-    
-    def p_example(self, p):
-        """example : TK_LPAREN TK_DEFINE_EXAMPLE TK_LPAREN ex_rule_plus TK_RPAREN TK_RPAREN"""
-        p[0] = p[4]
-    
-    def p_ex_rule_plus(self, p):
-        """ex_rule_plus : ex_rule_plus ex_rule
-                        | ex_rule"""
-        if 2 == len(p):
-            p[0] = [p[1]]
-        else:
-            p[0] = p[1] + [p[2]]
-    
-    def p_ex_rule(self, p):
-        """ex_rule : TK_LPAREN sort TK_LPAREN term_plus TK_RPAREN TK_RPAREN"""
-        p[0] = [p[2], p[4]]
 
     def p_function_plus(self, p):
         """function_plus : function_plus function

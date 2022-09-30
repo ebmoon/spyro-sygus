@@ -3,10 +3,9 @@ import ply.lex
 class SpyroSygusLexer(object):
     reserved = {
         'set-logic': 'TK_SET_LOGIC',
-        'variables': 'TK_DEFINE_VARIABLES',
-        'relations': 'TK_DEFINE_RELATIONS',
+        'define-var': 'TK_DEFINE_VARIABLES',
+        'define-rel': 'TK_DEFINE_RELATIONS',
         'generator': 'TK_DEFINE_GENERATOR',
-        'example': 'TK_DEFINE_EXAMPLE',
         'define-fun': 'TK_DEFINE_FUN',
         'Constant': 'TK_CONSTANT'
     }
