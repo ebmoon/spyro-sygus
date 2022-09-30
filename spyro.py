@@ -29,10 +29,7 @@ def main():
     keep_neg_may = args.keep_neg_may
     slv_seed = args.slv_seed
 
-    PropertySynthesizer(
-        infile, outfile, v, write_log,
-        timeout, inline_bnd, slv_seed,
-        num_atom_max, disable_min, keep_neg_may).run()
+    PropertySynthesizer(infile, outfile).run()
 
     infile.close()
     outfile.close()

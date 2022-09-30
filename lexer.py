@@ -3,8 +3,8 @@ import ply.lex
 class SpyroSygusLexer(object):
     reserved = {
         'set-logic': 'TK_SET_LOGIC',
-        'define-var': 'TK_DEFINE_VARIABLES',
-        'define-rel': 'TK_DEFINE_RELATIONS',
+        'define-var': 'TK_DEFINE_VARIABLE',
+        'define-rel': 'TK_DEFINE_RELATION',
         'generator': 'TK_DEFINE_GENERATOR',
         'define-fun': 'TK_DEFINE_FUN',
         'Constant': 'TK_CONSTANT'

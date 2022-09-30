@@ -12,5 +12,7 @@ class Template():
         self.parser = SpyroSygusParser()
         self.__ast = self.parser.parse(template)
 
+        print(str(self.__ast))
+
     def get_logic(self):
         return self.__ast[LOGIC]

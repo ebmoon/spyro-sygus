@@ -63,8 +63,8 @@ class AST(object):
 
 class SortExpression(AST):
 
-    def __init__(self, id):
-        self.id = id
+    def __init__(self, identifier):
+        self.identifier = identifier
 
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_sort_expression(self)
@@ -74,7 +74,10 @@ class SortExpression(AST):
             return False
         if not isinstance(other, SortExpression):
             return False
-        return (self.id == other.id)
+        return (self.identifier == other.ididentifier)
+
+    def __str__(self):
+        return self.identifier
 
 class Term(AST, ABC):
     
@@ -83,12 +86,15 @@ class Term(AST, ABC):
 
 class IdentifierTerm(Term):
 
-    def __init__(self, id):
+    def __init__(self, identifier):
         super().__init__()
-        self.id = id
+        self.identifier = identifier
 
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_identifier_term(self)
+
+    def __str__(self):
+        return self.identifier
 
 class NumeralTerm(Term):
 
@@ -99,16 +105,22 @@ class NumeralTerm(Term):
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_numeral_term(self)
 
+    def __str__(self):
+        return str(self.value)
 
 class FunctionApplicationTerm(Term):
 
-    def __init__(self, id, args):
+    def __init__(self, identifier, args):
         super().__init__()
-        self.id = id
+        self.identifier = identifier
         self.args = args
 
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_function_application_term(self)
+
+    def __str__(self):
+        args_str = " ".join([str(arg) for arg in self.args])
+        return f"({self.identifier} {args_str})"
 
 class ConstantTerm(Term):
 
@@ -119,6 +131,8 @@ class ConstantTerm(Term):
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_constant_term(self)
 
+    def __str__(self):
+        return f"(Constant {self.sort})"
 
 class ProductionRule(AST):
 
@@ -130,6 +144,9 @@ class ProductionRule(AST):
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_production_rule(self)
 
+    def __str__(self):
+        terms_str = " ".join([str(term) for term in self.terms])
+        return f"({self.head_symbol} {self.sort} ({terms_str}))"
 
 class Grammar(AST):
 
@@ -138,11 +155,16 @@ class Grammar(AST):
         self.rules = {}
 
         for rule in rule_lists:
-            rules[rule.head_symbol] = rule
+            self.rules[rule.head_symbol] = rule
 
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_grammar(self)
 
+    def __str__(self):
+        nonterminals_str = " ".join([f"({symbol} {sort})" for (symbol, sort) in self.nonterminals])
+        rules_str = "\r\n".join([str(rule) for rule in self.rules.values()])
+        
+        return f"({nonterminals_str}) ({rules_str})"
 
 @unique
 class CommandKind(Enum):
@@ -155,7 +177,7 @@ class CommandKind(Enum):
 class Command(AST, ABC):
     
     def __init__(self, command_kind: CommandKind):
-        self.command_kind: = command_kind
+        self.command_kind = command_kind
 
 class SetLogicCommand(Command):
 
@@ -166,16 +188,22 @@ class SetLogicCommand(Command):
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_set_logic_command(self)
 
+    def __str__(self):
+        return f"(set-logic {self.logic})"
+
 class DefineVariableCommand(Command):
 
-    def __init__(self, id, sort, grammar):
+    def __init__(self, identifier, sort, grammar):
         super().__init__(CommandKind.DEFINE_VAR)
-        self.id = id
+        self.identifier = identifier
         self.sort = sort
-        self.term = Grammar
+        self.grammar = grammar
 
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_define_variable_command(self)
+
+    def __str__(self):
+        return f"(define-var {self.identifier} {self.sort} {self.grammar})"
 
 class DefineRelationCommand(Command):
 
@@ -186,6 +214,9 @@ class DefineRelationCommand(Command):
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_define_relation_command(self)
 
+    def __str__(self):
+        return f"(define-rel {str(self.term)})"
+
 class DefineGeneratorCommand(Command):
 
     def __init__(self, grammar):
@@ -195,11 +226,14 @@ class DefineGeneratorCommand(Command):
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_define_generator_command(self)
 
+    def __str__(self):
+        return f"(generator {self.grammar})"
+
 class DefineFunctionCommand(Command):
 
-    def __init__(self, id, args, sort, term):
+    def __init__(self, identifier, args, sort, term):
         super().__init__(CommandKind.DEFINE_FUN)
-        self.id = id
+        self.identifier = identifier
         self.args = args
         self.sort = sort
         self.term = term
@@ -207,14 +241,17 @@ class DefineFunctionCommand(Command):
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_define_function_command(self)
 
+    def __str__(self):
+        args_str = " ".join([f"({symbol} {sort})" for (symbol, sort) in self.args])
+        return f"(define-fun {self.identifier} ({args_str}) {self.sort} {self.term})"
+
 class Program(AST):
     def __init__(self,
             set_logic_command,
             define_variable_commands,
             define_relation_commands,
             generator,
-            define_function_commands
-        )
+            define_function_commands):
         
         self.set_logic_command = set_logic_command
         self.define_variable_commands = define_variable_commands
@@ -224,3 +261,12 @@ class Program(AST):
 
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_program(self)
+
+    def __str__(self):
+        s = f"{self.set_logic_command}" + "\r\n\r\n"
+        s += "\r\n".join([str(cmd) for cmd in self.define_variable_commands]) + "\r\n\r\n"
+        s += "\r\n".join([str(cmd) for cmd in self.define_relation_commands]) + "\r\n\r\n"
+        s += str(self.generator) + "\r\n\r\n"
+        s += "\r\n".join([str(cmd) for cmd in self.define_function_commands])
+
+        return s

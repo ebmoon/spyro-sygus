@@ -1,13 +1,16 @@
 TEMP_FILE_NAME = "tmp"
 TEMP_FILE_DIR = "tmp/"
 
+LOG_FILE_DIR = "log/"
+
+
 def path_to_filename(path):
     basename = os.path.basename(path)
     filename, extension = os.path.splitext(basename)
 
     return filename
 
-def get_tmp_filename(infile, outfile)
+def get_tmp_filename(infile, outfile):
     infile_path = infile.name
         
     if infile_path != '<stdin>':

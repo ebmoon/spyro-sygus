@@ -5,7 +5,6 @@ from template import Template
 from util import *
 import cvc5
 
-TEMP_FILE_DIR = 
 
 class PropertySynthesizer:
     def __init__(self, infile, outfile):
@@ -24,7 +23,9 @@ class PropertySynthesizer:
         solver = cvc5.Solver()
         
         # CVC5 solver options
-        solver.setOption("produce-models", "true")
+        solver.setOption("sygus", "true")
+        solver.setOption("incremental", "true")
+
         solver.setLogic(self.__template.get_logic())
 
         self.__solver = solver

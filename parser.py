@@ -1,6 +1,7 @@
 import ply.yacc
 
 from lexer import SpyroSygusLexer
+from spyro_ast import *
 
 class SpyroSygusParser(object):
     tokens = SpyroSygusLexer.tokens
@@ -85,7 +86,7 @@ class SpyroSygusParser(object):
 
     def p_generator(self, p):
         """generator : TK_LPAREN TK_DEFINE_GENERATOR grammar TK_RPAREN"""
-        p[0] = DefineGeneratorCommand(p[4])
+        p[0] = DefineGeneratorCommand(p[3])
     
     def p_grammar(self, p):
         """grammar : TK_LPAREN nonterminal_plus TK_RPAREN TK_LPAREN rule_plus TK_RPAREN """
@@ -126,7 +127,7 @@ class SpyroSygusParser(object):
             p[0] = p[1] + [p[2]]
 
     def p_function(self, p):
-        """function : TK_LPAREN TK_DEFINE_FUN symbol TK_LPAREN arg_plus TK_RPAREN sort term_plus TK_RPAREN"""
+        """function : TK_LPAREN TK_DEFINE_FUN symbol TK_LPAREN arg_plus TK_RPAREN sort term TK_RPAREN"""
         p[0] = DefineFunctionCommand(p[3], p[5], p[7], p[8])
     
     def p_arg_plus(self, p):
