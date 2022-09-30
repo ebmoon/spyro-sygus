@@ -25,12 +25,12 @@ class SpyroSygusParser(object):
             p[0] = p[1] + [p[2]]
 
     def p_variable(self, p):
-        """variable : TK_LPAREN TK_DEFINE_VARIABLE symbol sort term TK_RPAREN"""
+        """variable : TK_LPAREN TK_DEFINE_VARIABLE TK_SYMBOL sort grammar TK_RPAREN"""
         p[0] = DefineVariableCommand(p[3], p[4], p[5])
 
     def p_sort(self, p):
         """sort : TK_SYMBOL"""
-        p[0] = p[1]
+        p[0] = SortExpression(p[1])
 
     def p_term_star(self, p):
         """term_star : term_plus
@@ -84,9 +84,27 @@ class SpyroSygusParser(object):
         p[0] = DefineRelationCommand(p[3])
 
     def p_generator(self, p):
-        """generator : TK_LPAREN TK_DEFINE_GENERATOR TK_LPAREN rule_plus TK_RPAREN TK_RPAREN"""
+        """generator : TK_LPAREN TK_DEFINE_GENERATOR grammar TK_RPAREN"""
         p[0] = DefineGeneratorCommand(p[4])
     
+    def p_grammar(self, p):
+        """grammar : TK_LPAREN nonterminal_plus TK_RPAREN TK_LPAREN rule_plus TK_RPAREN """
+
+        p[0] = Grammar(p[2], p[5])
+
+    def p_nonterminal_plus(self, p):
+        """nonterminal_plus : nonterminal_plus nonterminal
+                            | nonterminal"""
+        if 2 == len(p):
+            p[0] = [p[1]]
+        else:
+            p[0] = p[1] + [p[2]] 
+
+    def p_nonterminal(self, p):
+        """nonterminal : TK_LPAREN TK_SYMBOL sort TK_RPAREN"""
+
+        p[0] = (p[2], p[3])
+
     def p_rule_plus(self, p):
         """rule_plus : rule_plus rule
                      | rule"""
@@ -96,8 +114,8 @@ class SpyroSygusParser(object):
             p[0] = p[1] + [p[2]]
 
     def p_rule(self, p):
-        """rule : TK_LPAREN symbol sort TK_LPAREN term_plus TK_RPAREN TK_RPAREN"""
-        p[0] = [p[2], p[3], p[5]]
+        """rule : TK_LPAREN TK_SYMBOL sort TK_LPAREN term_plus TK_RPAREN TK_RPAREN"""
+        p[0] = ProductionRule(p[2], p[3], p[5])
 
     def p_function_plus(self, p):
         """function_plus : function_plus function
@@ -120,8 +138,8 @@ class SpyroSygusParser(object):
             p[0] = p[1] + [p[2]]        
 
     def p_arg(self, p):
-        """arg : TK_LPAREN symbol sort TK_RPAREN"""
-        p[0] = [p[2], p[3]]
+        """arg : TK_LPAREN TK_SYMBOL sort TK_RPAREN"""
+        p[0] = (p[2], p[3])
 
     def p_error(self, p):
         if p:

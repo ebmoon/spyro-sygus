@@ -24,6 +24,14 @@ class ASTVisitor(object):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_production_rule(self, production_rule):
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_grammar(self, grammar):
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_set_logic_command(self, set_logic_command):
         raise NotImplementedError
 
@@ -111,6 +119,31 @@ class ConstantTerm(Term):
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_constant_term(self)
 
+
+class ProductionRule(AST):
+
+    def __init__(self, head_symbol, sort, terms):
+        self.head_symbol = head_symbol
+        self.sort = sort
+        self.terms = terms
+
+    def accept(self, visitor: ASTVisitor):
+        return visitor.visit_production_rule(self)
+
+
+class Grammar(AST):
+
+    def __init__(self, nonterminals, rule_lists):
+        self.nonterminals = nonterminals
+        self.rules = {}
+
+        for rule in rule_lists:
+            rules[rule.head_symbol] = rule
+
+    def accept(self, visitor: ASTVisitor):
+        return visitor.visit_grammar(self)
+
+
 @unique
 class CommandKind(Enum):
     SET_LOGIC = auto()
@@ -135,11 +168,11 @@ class SetLogicCommand(Command):
 
 class DefineVariableCommand(Command):
 
-    def __init__(self, id, sort, term):
+    def __init__(self, id, sort, grammar):
         super().__init__(CommandKind.DEFINE_VAR)
         self.id = id
         self.sort = sort
-        self.term = term
+        self.term = Grammar
 
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_define_variable_command(self)

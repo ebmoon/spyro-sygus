@@ -1,14 +1,23 @@
 (set-logic LIA)
 
-(define-var x1 Int (Constant Int))
-(define-var x2 Int (Constant Int))
-(define-var o Int (Constant Int))
+(define-var x1 Int 
+    ((Start Int))
+    ((Start Int ((Constant Int)))))
+(define-var x2 Int 
+    ((Start Int))
+    ((Start Int ((Constant Int)))))
+(define-var o Int 
+    ((Start Int))
+    ((Start Int ((Constant Int)))))
 
-(relations ((= o (max2 x1 x2))))
+(define-rel (= o (max2 x1 x2)))
 
-(generator ((AP Bool ((= I I) (<= I I) (>= I I) (> I I) (< I I) (distinct I I)))
-            (I Int (x1 x2 o))))
+(generator 
+    ((B Bool) (AP Bool) (I Int))
 
-(example ((Int ((Constant Int)))))
+    ((B Bool (true AP (or AP AP) (or AP AP AP)))
+     (AP Bool ((= I I) (<= I I) (>= I I) (> I I) (< I I) (distinct I I)))
+     (I Int (x1 x2 o)))
+)
 
 (define-fun max2 ((x1 Int) (x2 Int)) Int (ite (<= x2 x1) x1 x2))
