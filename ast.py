@@ -4,6 +4,26 @@ from enum import auto, Enum, unique
 class ASTVisitor(object):
 
     @abstractmethod
+    def visit_sort_expresion(self, sort_expression):
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_identifier_term(self, identifier_term):
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_numeral_term(self, numeral_term):
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_function_application_term(self, function_appliation_term):
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_constant_term(self, constant_term):
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_set_logic_command(self, set_logic_command):
         raise NotImplementedError
 
@@ -35,17 +55,61 @@ class AST(object):
 
 class SortExpression(AST):
 
+    def __init__(self, id):
+        self.id = id
+
+    def accept(self, visitor: ASTVisitor):
+        return visitor.visit_sort_expression(self)
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        if not isinstance(other, SortExpression):
+            return False
+        return (self.id == other.id)
 
 class Term(AST, ABC):
-
+    
+    def __init__(self):
+        pass
 
 class IdentifierTerm(Term):
 
+    def __init__(self, id):
+        super().__init__()
+        self.id = id
+
+    def accept(self, visitor: ASTVisitor):
+        return visitor.visit_identifier_term(self)
+
 class NumeralTerm(Term):
+
+    def __init__(self, value):
+        super().__init__()
+        self.value = value
+
+    def accept(self, visitor: ASTVisitor):
+        return visitor.visit_numeral_term(self)
+
 
 class FunctionApplicationTerm(Term):
 
+    def __init__(self, id, args):
+        super().__init__()
+        self.id = id
+        self.args = args
+
+    def accept(self, visitor: ASTVisitor):
+        return visitor.visit_function_application_term(self)
+
 class ConstantTerm(Term):
+
+    def __init__(self, sort):
+        super().__init__()
+        self.sort = sort
+
+    def accept(self, visitor: ASTVisitor):
+        return visitor.visit_constant_term(self)
 
 @unique
 class CommandKind(Enum):
