@@ -4,7 +4,7 @@ from enum import auto, Enum, unique
 class ASTVisitor(object):
 
     @abstractmethod
-    def visit_sort_expresion(self, sort_expression):
+    def visit_sort_expression(self, sort_expression):
         raise NotImplementedError
 
     @abstractmethod
@@ -16,7 +16,7 @@ class ASTVisitor(object):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_function_application_term(self, function_appliation_term):
+    def visit_function_application_term(self, function_application_term):
         raise NotImplementedError
 
     @abstractmethod
@@ -40,7 +40,7 @@ class ASTVisitor(object):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_define_relation_command(self, define_relation_command):
+    def visit_define_constraint_command(self, define_constraint_command):
         raise NotImplementedError
 
     @abstractmethod
@@ -170,7 +170,7 @@ class Grammar(AST):
 class CommandKind(Enum):
     SET_LOGIC = auto()
     DEFINE_VAR = auto()
-    DEFINE_REL = auto()
+    DEFINE_CONSTRAINT = auto()
     DEFINE_GENERATOR = auto()
     DEFINE_FUN = auto()
 
@@ -205,17 +205,17 @@ class DefineVariableCommand(Command):
     def __str__(self):
         return f"(define-var {self.identifier} {self.sort} {self.grammar})"
 
-class DefineRelationCommand(Command):
+class DefineConstraintCommand(Command):
 
     def __init__(self, term):
-        super().__init__(CommandKind.DEFINE_REL)
+        super().__init__(CommandKind.DEFINE_CONSTRAINT)
         self.term = term
 
     def accept(self, visitor: ASTVisitor):
-        return visitor.visit_define_relation_command(self)
+        return visitor.visit_define_constraint_command(self)
 
     def __str__(self):
-        return f"(define-rel {str(self.term)})"
+        return f"(constraint {str(self.term)})"
 
 class DefineGeneratorCommand(Command):
 
@@ -249,13 +249,13 @@ class Program(AST):
     def __init__(self,
             set_logic_command,
             define_variable_commands,
-            define_relation_commands,
+            define_function_commands,
             generator,
-            define_function_commands):
+            define_constraint_commands):
         
         self.set_logic_command = set_logic_command
         self.define_variable_commands = define_variable_commands
-        self.define_relation_commands = define_relation_commands
+        self.define_constraint_commands = define_constraint_commands
         self.generator = generator
         self.define_function_commands = define_function_commands
 
@@ -265,8 +265,9 @@ class Program(AST):
     def __str__(self):
         s = f"{self.set_logic_command}" + "\r\n\r\n"
         s += "\r\n".join([str(cmd) for cmd in self.define_variable_commands]) + "\r\n\r\n"
-        s += "\r\n".join([str(cmd) for cmd in self.define_relation_commands]) + "\r\n\r\n"
+        s += "\r\n".join([str(cmd) for cmd in self.define_function_commands]) + "\r\n\r\n"
         s += str(self.generator) + "\r\n\r\n"
-        s += "\r\n".join([str(cmd) for cmd in self.define_function_commands])
+        s += "\r\n".join([str(cmd) for cmd in self.define_constraint_commands])
+        
 
         return s

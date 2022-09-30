@@ -10,7 +10,7 @@
     ((Start Int))
     ((Start Int ((Constant Int)))))
 
-(define-rel (= o (max2 x1 x2)))
+(define-fun max2 ((x1 Int) (x2 Int)) Int (ite (<= x2 x1) x1 x2))
 
 (generator 
     ((B Bool) (AP Bool) (I Int))
@@ -20,4 +20,4 @@
      (I Int (x1 x2 o)))
 )
 
-(define-fun max2 ((x1 Int) (x2 Int)) Int (ite (<= x2 x1) x1 x2))
+(constraint (= o (max2 x1 x2)))

@@ -1,7 +1,8 @@
 import os
 import time
 
-from template import Template
+from parser import SpyroSygusParser
+from soundness import SoundnessOracle
 from util import *
 import cvc5
 
@@ -14,21 +15,11 @@ class PropertySynthesizer:
         self.__outfile = outfile
       
         # Template for Sketch synthesis
-        self.__template = Template(infile.read())
+        self.__ast = SpyroSygusParser().parse(self.__infile.read())
+        print(self.__ast)
 
         # Solver
-        self.__initialize_solver()
-
-    def __initialize_solver(self):
-        solver = cvc5.Solver()
-        
-        # CVC5 solver options
-        solver.setOption("sygus", "true")
-        solver.setOption("incremental", "true")
-
-        solver.setLogic(self.__template.get_logic())
-
-        self.__solver = solver
+        self.__soundness_oracle = SoundnessOracle(self.__ast)
 
     def __write_output(self, output):
         self.__outfile.write(output)     

@@ -7,7 +7,7 @@ class SpyroSygusParser(object):
     tokens = SpyroSygusLexer.tokens
 
     def p_program(self, p):
-        """program : set_logic_command variable_plus relation_plus generator function_plus"""
+        """program : set_logic_command variable_plus function_plus generator constraint_plus"""
         
         p[0] = Program(p[1], p[2], p[3], p[4], p[5])
         self._ast_root = p[0]
@@ -62,7 +62,7 @@ class SpyroSygusParser(object):
         p[0] = ConstantTerm(p[3])
 
     def p_app(self, p):
-        """app : TK_LPAREN symbol term_star TK_RPAREN"""
+        """app : TK_LPAREN TK_SYMBOL term_star TK_RPAREN"""
         p[0] = FunctionApplicationTerm(p[2], p[3])
 
     def p_term(self, p):
@@ -72,17 +72,17 @@ class SpyroSygusParser(object):
                 | constant"""
         p[0] = p[1]       
     
-    def p_relation_plus(self, p):
-        """relation_plus : relation_plus relation
-                         | relation"""
+    def p_constraint_plus(self, p):
+        """constraint_plus : constraint_plus constraint
+                           | constraint"""
         if 2 == len(p):
             p[0] = [p[1]]
         else:
             p[0] = p[1] + [p[2]]
     
-    def p_relation(self, p):
-        """relation : TK_LPAREN TK_DEFINE_RELATION term TK_RPAREN"""
-        p[0] = DefineRelationCommand(p[3])
+    def p_constraint(self, p):
+        """constraint : TK_LPAREN TK_DEFINE_CONSTRAINT term TK_RPAREN"""
+        p[0] = DefineConstraintCommand(p[3])
 
     def p_generator(self, p):
         """generator : TK_LPAREN TK_DEFINE_GENERATOR grammar TK_RPAREN"""
@@ -127,7 +127,7 @@ class SpyroSygusParser(object):
             p[0] = p[1] + [p[2]]
 
     def p_function(self, p):
-        """function : TK_LPAREN TK_DEFINE_FUN symbol TK_LPAREN arg_plus TK_RPAREN sort term TK_RPAREN"""
+        """function : TK_LPAREN TK_DEFINE_FUN TK_SYMBOL TK_LPAREN arg_plus TK_RPAREN sort term TK_RPAREN"""
         p[0] = DefineFunctionCommand(p[3], p[5], p[7], p[8])
     
     def p_arg_plus(self, p):

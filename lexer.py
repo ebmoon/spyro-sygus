@@ -4,7 +4,7 @@ class SpyroSygusLexer(object):
     reserved = {
         'set-logic': 'TK_SET_LOGIC',
         'define-var': 'TK_DEFINE_VARIABLE',
-        'define-rel': 'TK_DEFINE_RELATION',
+        'constraint': 'TK_DEFINE_CONSTRAINT',
         'generator': 'TK_DEFINE_GENERATOR',
         'define-fun': 'TK_DEFINE_FUN',
         'Constant': 'TK_CONSTANT'
