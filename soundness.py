@@ -73,9 +73,14 @@ class SoundnessOracleInitializer(ASTVisitor):
 
     def visit_define_variable_command(self, define_variable_command):
         sort = define_variable_command.sort.accept(self)
+
+        current_cxt = self.cxt
+        self.cxt = {}
+
         g = define_variable_command.grammar.accept(self)
         term = self.solver.synthFun(define_variable_command.identifier, [], sort, g)
-        
+
+        self.cxt = current_cxt        
         self.cxt[define_variable_command.identifier] = term
 
         return term
@@ -112,17 +117,37 @@ class SoundnessOracleInitializer(ASTVisitor):
         functions = [cmd.accept(self) for cmd in program.define_function_commands]
         constraints = [cmd.accept(self) for cmd in program.define_constraint_commands]
 
-        return (variables, constraints, functions)
+        return (self.cxt, variables, constraints, functions)
 
 class SoundnessOracle(object):
     def __init__(self, ast):
         self.solver = cvc5.Solver()
         self.ast = ast
+        self.__initializer = SoundnessOracleInitializer(self.solver)
 
         self.solver.setOption("sygus", "true")
         self.solver.setOption("incremental", "true")
+        self.solver.setOption("sygus-grammar-cons", "any-const")
+        
+        cxt, variables, constraints, functions = ast.accept(self.__initializer)
+        self.cxt = cxt
+        self.variables = variables
+        self.constraints = constraints
+        self.functions = functions
 
+    # Input : Candadate specification as CVC5 term
+    # Output : Counterexample as CVC5 term
     def check_soundness(self, spec):
-        raise NotImplementedError
+        self.solver.push()
+
+        spec_neg = self.solver.mkTerm(Kind.NOT, spec)
+        self.solver.addSygusConstraint(spec_neg)
+
+        if self.solver.checkSynth().hasSolution():
+            return self.solver.getSynthSolutions(self.variables)
+        else:
+            return None
+
+        self.solver.pop()
         
 

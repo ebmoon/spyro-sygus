@@ -16,10 +16,13 @@ class PropertySynthesizer:
       
         # Template for Sketch synthesis
         self.__ast = SpyroSygusParser().parse(self.__infile.read())
-        print(self.__ast)
 
         # Solver
         self.__soundness_oracle = SoundnessOracle(self.__ast)
+
+        cex = self.__soundness_oracle.check_soundness(self.__soundness_oracle.solver.mkFalse())
+        for e in cex:
+            print(type(e))
 
     def __write_output(self, output):
         self.__outfile.write(output)     
