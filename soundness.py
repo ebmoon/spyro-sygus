@@ -39,7 +39,8 @@ class SoundnessOracle(object):
     def check_soundness(self, spec):
         self.solver.push()
 
-        spec_neg = self.solver.mkTerm(Kind.NOT, spec)
+        constraint_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
+        spec_neg = self.solver.mkTerm(Kind.NOT, constraint_spec)
         self.solver.addSygusConstraint(spec_neg)
 
         if self.solver.checkSynth().hasSolution():

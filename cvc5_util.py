@@ -3,9 +3,14 @@ from collections import defaultdict
 from spyro_ast import ASTVisitor
 from abc import ABC
 
-TIMEOUT = 300000
+TIMEOUT = str(300000)
 
-reserved = {
+reserved_ids = {
+    'true': lambda solver: solver.mkTrue(),
+    'false': lambda solver: solver.mkFalse()
+}
+
+reserved_functions = {
     '<': Kind.LT,
     '<=': Kind.LEQ,
     '>': Kind.GT,
@@ -15,11 +20,14 @@ reserved = {
     'ite': Kind.ITE,
     '+': Kind.ADD,
     '*': Kind.MULT,
-    '-': Kind.SUB
+    '-': Kind.SUB,
+    'or': Kind.OR,
+    'and': Kind.AND,
+    'not': Kind.NOT
 }
 
 kind_dict = defaultdict(lambda: Kind.APPLY_UF)
-for k, v in reserved.items():
+for k, v in reserved_functions.items():
     kind_dict[k] = v
 
 class BaseInitializer(ASTVisitor, ABC):
@@ -41,7 +49,10 @@ class BaseInitializer(ASTVisitor, ABC):
             raise NotImplementedError
 
     def visit_identifier_term(self, identifier_term):
-        return self.cxt_variables[identifier_term.identifier]
+        if identifier_term.identifier in reserved_ids:
+            return reserved_ids[identifier_term.identifier](self.solver)
+        else:
+            return self.cxt_variables[identifier_term.identifier]
 
     def visit_numeral_term(self, numeral_term):
         return self.solver.mkInteger(numeral_term.value)
@@ -49,7 +60,7 @@ class BaseInitializer(ASTVisitor, ABC):
     def visit_function_application_term(self, function_application_term):
         kind = kind_dict[function_application_term.identifier]
         arg_terms = [arg.accept(self) for arg in function_application_term.args]
-        if function_application_term.identifier in reserved:
+        if function_application_term.identifier in reserved_functions:
             return self.solver.mkTerm(kind, *arg_terms)
         else:
             return self.solver.mkTerm(kind, self.cxt_functions[function_application_term.identifier], *arg_terms)
@@ -84,7 +95,7 @@ class BaseInitializer(ASTVisitor, ABC):
             g.addRules(self.cxt_variables[head_symbol], rule.accept(self))
 
         self.current_grammar = None
-        self.cxt_bariables = current_cxt
+        self.cxt_variables = current_cxt
 
         return g
 

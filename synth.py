@@ -20,7 +20,7 @@ class SynthesisOracleInitializer(BaseInitializer):
         # Set logic of the solver
         program.set_logic_command.accept(self)
         variables = [cmd.accept(self) for cmd in program.define_variable_commands]
-        spec = program.define_generator_command.accept(self)
+        spec = program.generator.accept(self)
 
         return (variables, spec)
 
@@ -87,6 +87,11 @@ class SynthesisOracle(object):
 
         self.solver.push(1)
         self.solver.push(2)
+
+    def make_true_spec(self):
+        bool_sort = self.solver.getBooleanSort()
+        true_term = self.solver.mkTrue()
+        return self.solver.defineFun("spec", self.variables, bool_sort, true_term)
 
     def synthesize(self):
         if self.solver.checkSynth().hasSolution():

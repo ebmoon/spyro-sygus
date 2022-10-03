@@ -12,10 +12,11 @@ class PrecisionOracleInitializer(BaseInitializer):
         program.set_logic_command.accept(self)
         variables = [cmd.accept(self) for cmd in program.define_variable_commands]
         functions = [cmd.accept(self) for cmd in program.define_function_commands]
-        spec = program.define_generator_command.accept(self)
-        
-        spec_neg = self.solver.mkTerm(Kind.NOT, spec)
-        self.solver.addSygusConstraint(spec_neg)
+        spec = program.generator.accept(self)
+
+        constraint = self.solver.mkTerm(Kind.APPLY_UF, spec, *variables)
+        constraint_neg = self.solver.mkTerm(Kind.NOT, constraint)
+        self.solver.addSygusConstraint(constraint_neg)
 
         return (variables, functions, spec)
 
@@ -87,16 +88,18 @@ class PrecisionOracle(object):
 
     def check_precision(self, spec):
         self.solver.push(3)
-        self.solver.addSygusConstraint(spec)
+        
+        constraint_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
+        self.solver.addSygusConstraint(constraint_spec)
 
         if self.solver.checkSynth().hasSolution():
-            const_soln = self.solver.getSynthSolution(self.variables)
+            const_soln = self.solver.getSynthSolutions(self.variables)
             spec_soln = self.solver.getSynthSolution(self.spec)
             self.solver.pop(3)
             return (const_soln, spec_soln)
         else:
             self.solver.pop(3)
-            return None
+            return (None, None)
 
         
 
