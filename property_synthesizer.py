@@ -2,6 +2,7 @@ import os
 import time
 
 from parser import SpyroSygusParser
+from synth import SynthesisOracle
 from soundness import SoundnessOracle
 from util import *
 import cvc5
@@ -23,38 +24,6 @@ class PropertySynthesizer:
 
     def __write_output(self, output):
         self.__outfile.write(output)     
-
-    def __try_synthesis(self, code):
-        start_time = time.time()
-        
-        # Write temp file
-        path = self.__get_new_tempfile_path()
-        self.__write_tempfile(path, code)
-        
-        try:
-            # Run Sketch with temp file
-            output = subprocess.check_output(
-                [SKETCH_BINARY_PATH, path, 
-                    '--bnd-inline-amnt', str(self.__inline_bnd),
-                    '--slv-seed', str(self.__slv_seed),
-                    '--slv-timeout', f'{self.__timeout / 60.0:2f}'],
-                stderr=subprocess.PIPE)
-            
-            end_time = time.time()
-            
-            return output, end_time - start_time
-        
-        except subprocess.CalledProcessError as e:
-            end_time = time.time()
-            return None, end_time - start_time
-        
-        except subprocess.TimeoutExpired as e:
-            if self.__verbose:
-                print("Timeout")
-            
-            end_time = time.time()
-            
-            return None, end_time - start_time
 
     def __synthesize(self, pos, neg_must, neg_may, lam_functions):
         if self.__verbose:

@@ -3,6 +3,8 @@ from collections import defaultdict
 from spyro_ast import ASTVisitor
 from abc import ABC
 
+TIMEOUT = 300000
+
 reserved = {
     '<': Kind.LT,
     '<=': Kind.LEQ,
@@ -60,7 +62,7 @@ class BaseInitializer(ASTVisitor, ABC):
         self.current_head_symbol = head_symbol_term
 
         rule_terms = [rule.accept(self) for rule in production_rule.terms]
-        rule_terms = [terms for term in rule_terms if term != None]
+        rule_terms = [term for term in rule_terms if term != None]
 
         self.current_head_symbol = None        
 

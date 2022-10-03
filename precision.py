@@ -3,41 +3,38 @@ from spyro_ast import *
 from cvc5 import Kind
 from cvc5_util import *
 
-class SynthesisOracleInitializer(BaseInitializer):
+class PrecisionOracleInitializer(BaseInitializer):
     
     def __init__(self, solver):
         super().__init__(solver)
 
-    def visit_define_variable_command(self, define_variable_command):
-        sort = define_variable_command.sort.accept(self)
-        term = self.solver.mkVar(sort, define_variable_command.identifier)
-      
-        self.cxt_variables[define_variable_command.identifier] = term
-
-        return term
-
     def visit_program(self, program):
-        # Set logic of the solver
         program.set_logic_command.accept(self)
         variables = [cmd.accept(self) for cmd in program.define_variable_commands]
+        functions = [cmd.accept(self) for cmd in program.define_function_commands]
         spec = program.define_generator_command.accept(self)
+        
+        spec_neg = self.solver.mkTerm(Kind.NOT, spec)
+        self.solver.addSygusConstraint(spec_neg)
 
-        return (variables, spec)
+        return (variables, functions, spec)
 
-class SynthesisOracle(object):
+class PrecisionOracle(object):
 
     def __init__(self, ast):
         self.solver = cvc5.Solver()
         self.ast = ast
-        self.__initializer = SynthesisOracleInitializer(self.solver)
+        self.__initializer = PrecisionOracleInitializer(self.solver)
 
         self.solver.setOption("sygus", "true")
         self.solver.setOption("incremental", "true")
+        self.solver.setOption("sygus-grammar-cons", "any-const")
         self.solver.setOption("tlimit", TIMEOUT)
         
-        variables, spec = ast.accept(self.__initializer)
+        variables, functions, spec = ast.accept(self.__initializer)
         
         self.variables = variables
+        self.functions = functions
         self.spec = spec
 
         self.new_pos = []
@@ -88,10 +85,17 @@ class SynthesisOracle(object):
         self.solver.push(1)
         self.solver.push(2)
 
-    def synthesize(self):
+    def check_precision(self, spec):
+        self.solver.push(3)
+        self.solver.addSygusConstraint(spec)
+
         if self.solver.checkSynth().hasSolution():
-            return self.solver.getSynthSolution(self.spec)
+            const_soln = self.solver.getSynthSolution(self.variables)
+            spec_soln = self.solver.getSynthSolution(self.spec)
+            self.solver.pop(3)
+            return (const_soln, spec_soln)
         else:
+            self.solver.pop(3)
             return None
 
         
