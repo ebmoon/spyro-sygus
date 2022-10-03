@@ -1,3 +1,5 @@
+import os
+
 TEMP_FILE_NAME = "tmp"
 TEMP_FILE_DIR = "tmp/"
 

@@ -4,6 +4,7 @@ import time
 from parser import SpyroSygusParser
 from synth import SynthesisOracle
 from soundness import SoundnessOracle
+from precision import PrecisionOracle
 from util import *
 import cvc5
 
@@ -18,9 +19,14 @@ class PropertySynthesizer:
         # Template for Sketch synthesis
         self.__ast = SpyroSygusParser().parse(self.__infile.read())
 
+        # Iterators
+        self.__outer_iterator = 0
+        self.__inner_iterator = 0
+
         # Primitives
         self.__synthesis_oracle = SynthesisOracle(self.__ast)
         self.__soundness_oracle = SoundnessOracle(self.__ast)
+        self.__precision_oracle = PrecisionOracle(self.__ast)
 
     def __write_output(self, output):
         self.__outfile.write(output)     
@@ -30,134 +36,55 @@ class PropertySynthesizer:
             print(f'Iteration {self.__outer_iterator} - {self.__inner_iterator}: Try synthesis')   
 
         # Run Sketch with temp file
-        code = self.__input_generator.generate_synthesis_input(pos, neg_must, neg_may, lam_functions)  
-        output, elapsed_time = self.__try_synthesis(code)
+        start_time = time.time()
+        phi = self.__synthesis_oracle.synthesize()
+        end_time = time.time()
         
         # Update statistics
-        self.__num_synthesis += 1
-        self.__time_synthesis += elapsed_time
-        if elapsed_time > self.__max_time_synthesis:
-            self.__max_time_synthesis = elapsed_time
-
-        # Write trace log
-        if self.__write_log:
-            log = [f'{self.__outer_iterator}', f'{self.__inner_iterator}']
-            log += ['Y', f'{elapsed_time}']
-            log += [f'{len(pos)}', f'{len(neg_must)}', f'{len(neg_may)}']
-
-            self.__logfile.write(','.join(log) + "\n")
+        elapsed_time = end_time - start_time
 
         # Return the result
-        if output != None:
-            output_parser = OutputParser(output)
-            phi = output_parser.parse_property()
-            lam = output_parser.get_lam_functions()
-            return (phi, lam)
+        if phi != None:
+            return phi
         else:
-            return (None, None)
+            return None
 
-    def __max_synthesize(self, pos, neg_must, neg_may, lam_functions, phi_init):
-        if self.__verbose:
-            print(f'Iteration {self.__outer_iterator} - {self.__inner_iterator}: Run MaxSat')
-
-        # Run Sketch with temp file
-        code = self.__input_generator.generate_maxsat_input(pos, neg_must, neg_may, lam_functions)    
-        output, elapsed_time = self.__try_synthesis(code)
-
-        # Update statistics
-        self.__num_maxsat += 1
-        self.__time_maxsat += elapsed_time
-        if elapsed_time > self.__max_time_maxsat:
-            self.__max_time_maxsat = elapsed_time
-
-        # Write trace log
-        if self.__write_log:
-            log = [f'{self.__outer_iterator}', f'{self.__inner_iterator}']
-            log += ['M', f'{elapsed_time}']
-            log += [f'{len(pos)}', f'{len(neg_must)}', f'{len(neg_may)}']
-
-            self.__logfile.write(','.join(log) + "\n")
-
-        # Return the result
-        if output != None:
-            output_parser = OutputParser(output)
-            neg_may, delta = output_parser.parse_maxsat(neg_may) 
-            phi = output_parser.parse_property()
-            lam = output_parser.get_lam_functions()
-            return (neg_may, delta, phi, lam)
-        else:
-            if phi_init == None:
-                raise Exception("MaxSynth Failed")
-
-            neg_may, delta = [], neg_may
-            phi = phi_init
-            lam = lam_functions
-            return (neg_may, delta, phi, lam)
-
-    def __check_soundness(self, phi, lam_functions):
+    def __check_soundness(self, phi):
         if self.__verbose:
             print(f'Iteration {self.__outer_iterator} - {self.__inner_iterator}: Check soundness')
 
         # Run Sketch with temp file
-        code = self.__input_generator.generate_soundness_input(phi, lam_functions)       
-        output, elapsed_time = self.__try_synthesis(code)
+        start_time = time.time()
+        e_pos = self.__soundness_oracle.check_soundness(phi)
+        end_time = time.time()
 
-        # Update statistics
-        self.__num_soundness += 1
-        self.__time_soundness += elapsed_time
-        if elapsed_time > self.__max_time_soundness:
-            self.__max_time_soundness = elapsed_time
-
-        # Write trace log
-        if self.__write_log:
-            log = [f'{self.__outer_iterator}', f'{self.__inner_iterator}']
-            log += ['S', f'{elapsed_time}']
-            log += ['-', '-', '-']
-
-            self.__logfile.write(','.join(log) + "\n")
+        # Statistics
+        elapsed_time = end_time - start_time
 
         # Return the result
-        if output != None:
-            output_parser = OutputParser(output)
-            e_pos = output_parser.parse_positive_example()
-            lam = output_parser.get_lam_functions()
-            return (e_pos, lam, False)
+        if e_pos != None:
+            return (e_pos, False)
         else:
-            return (None, None, elapsed_time >= self.__timeout)
+            return (None, elapsed_time >= self.__timeout)
 
     def __check_precision(self, phi, phi_list, pos, neg_must, neg_may, lam_functions):
         if self.__verbose:
             print(f'Iteration {self.__outer_iterator} - {self.__inner_iterator}: Check precision')
 
         # Run Sketch with temp file
-        code = self.__input_generator \
-            .generate_precision_input(phi, phi_list, pos, neg_must, neg_may, lam_functions)      
-        output, elapsed_time = self.__try_synthesis(code)
+        start_time = time.time()
+        e_neg, phi = self.__precision_oracle.check_precision(phi)
+        end_time = time.time()
 
         # Update statistics
-        self.__num_precision += 1
-        self.__time_precision += elapsed_time
-        if elapsed_time > self.__max_time_precision:
-            self.__max_time_precision = elapsed_time
-
-        # Write trace log file
-        if self.__write_log:
-            log = [f'{self.__outer_iterator}', f'{self.__inner_iterator}']
-            log += ['P', f'{elapsed_time}']
-            log += [f'{len(pos)}', f'{len(neg_must)}', f'{len(neg_may)}']
-
-            self.__logfile.write(','.join(log) + "\n")
+        elapsed_time = end_time - start_time
 
         # Return the result
         if output != None:
-            output_parser = OutputParser(output)
-            e_neg = output_parser.parse_negative_example_precision() 
-            phi = output_parser.parse_property()
-            lam = output_parser.get_lam_functions()
-            return (e_neg, phi, lam)
+            return (e_neg, phi)
         else:
             self.__time_last_query = elapsed_time
-            return (None, None, None)
+            return (None, None)
 
     def __check_improves_predicate(self, phi_list, phi, lam_functions):
         if self.__verbose:
@@ -175,36 +102,15 @@ class PropertySynthesizer:
         else:
             return None
 
-    def __model_check(self, phi, neg_example, lam_functions):
-        if self.__verbose:
-            print(f'Iteration {self.__outer_iterator} : Model check')
-
-        # Run Sketch with temp file
-        code = self.__input_generator \
-            .generate_model_check_input(phi, neg_example, lam_functions)
-        output, _ = self.__try_synthesis(code)
-
-        # Return the result
-        return output != None
-
-    def __filter_neg_delta(self, phi, neg_delta, lam_functions):
-        return [e for e in neg_delta if self.__model_check(phi, e, lam_functions)]
-
-    def __synthesizeProperty(
-            self, phi_list, phi_init, 
-            pos, neg_must, neg_may, lam_functions, 
-            most_precise, update_psi):
+    def __synthesizeProperty(self, phi_list, phi_init, pos, neg_must):
         # Assume that current phi is sound
         phi_e = phi_init
         phi_last_sound = None
-        neg_delta = []
-        phi_sound = []
 
         while True:
-            e_pos, lam, timeout = self.__check_soundness(phi_e, lam_functions)
+            e_pos, lam, timeout = self.__check_soundness(phi_e)
             if e_pos != None:
                 pos.append(e_pos)
-                lam_functions = union_dict(lam_functions, lam)
                 
                 # First try synthesis
                 phi, lam = self.__synthesize(pos, neg_must, neg_may, lam_functions)
@@ -273,8 +179,6 @@ class PropertySynthesizer:
         lam_functions = {}
 
         while True:
-            # Find a property improves conjunction as much as possible
-            self.__input_generator.disable_minimize_terms()
 
             if len(neg_may) > 0:
                 neg_may, _, phi_init, lam = self.__max_synthesize(
@@ -307,12 +211,10 @@ class PropertySynthesizer:
                 # Synthesize a new candidate, which is minimized
                 # We can always synthesize a property here
                 phi, lam = self.__synthesize(pos, neg_must, [], lam_functions)
-                lam_functions = union_dict(lam_functions, lam)
 
             # Strengthen the found property to be most precise L-property
             phi, pos, neg_used, neg_delta, lam = \
                 self.__synthesizeProperty([], phi, pos, neg_must, [], lam_functions, True, False)
-            lam_functions = union_dict(lam_functions, lam)
 
             stat = self.__statisticsCurrentProperty(pos, neg_must, neg_may, neg_used, neg_delta)
             self.__statistics.append(stat)
