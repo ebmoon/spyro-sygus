@@ -14,6 +14,8 @@ class SoundnessOracleInitializer(BaseInitializer):
         functions = [cmd.accept(self) for cmd in program.define_function_commands]
         constraints = [cmd.accept(self) for cmd in program.define_constraint_commands]
 
+        print(constraints)
+
         return (variables, functions, constraints)
 
 class SoundnessOracle(object):
@@ -26,7 +28,7 @@ class SoundnessOracle(object):
         self.solver.setOption("sygus", "true")
         self.solver.setOption("incremental", "true")
         self.solver.setOption("sygus-grammar-cons", "any-const")
-        self.solver.setOption("tlimit", TIMEOUT)
+        self.solver.setOption("tlimit-per", TIMEOUT)
         
         variables, functions, constraints = ast.accept(self.__initializer)
         
@@ -50,5 +52,3 @@ class SoundnessOracle(object):
         else:
             self.solver.pop()
             return None
-        
-

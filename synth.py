@@ -33,7 +33,7 @@ class SynthesisOracle(object):
 
         self.solver.setOption("sygus", "true")
         self.solver.setOption("incremental", "true")
-        self.solver.setOption("tlimit", TIMEOUT)
+        self.solver.setOption("tlimit-per", TIMEOUT)
 
         variables, spec = ast.accept(self.__initializer)
 
@@ -75,13 +75,21 @@ class SynthesisOracle(object):
 
         self.solver.push()
 
+    def clear_negative_may(self):
+        self.solver.pop()     
+        
+        self.neg_may = []
+
+        self.solver.push()
+
     def clear_negative_example(self):
         self.solver.pop(2)
 
         for e_term in self.new_pos:
-            self.solver.addSygusConstraint(e_term)        
+            self.solver.addSygusConstraint(e_term)
         
         self.new_pos = []
+        self.neg_may = []
 
         self.solver.push(2)
 

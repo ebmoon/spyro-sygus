@@ -79,14 +79,14 @@ class PropertySynthesizer:
         else:
             return (None, elapsed_time >= self.__timeout)
 
-    def __check_precision(self, phi, phi_list):
+    def __check_precision(self, phi):
         if self.__verbose:
             print(f'Iteration {self.__outer_iterator} - {self.__inner_iterator}: Check precision')
             self.__inner_iterator += 1
 
         # Run CVC5
         start_time = time.time()
-        e_neg, phi = self.__precision_oracle.check_precision(phi_list, phi)
+        e_neg, phi = self.__precision_oracle.check_precision(phi)
         end_time = time.time()
 
         # Update statistics
@@ -101,13 +101,13 @@ class PropertySynthesizer:
             self.__time_last_query = elapsed_time
             return (None, None)
 
-    def __check_improves_predicate(self, phi_list, phi):
+    def __check_improves_predicate(self, phi):
         if self.__verbose:
             print(f'Iteration {self.__outer_iterator} : Check termination')
 
         # Run CVC5
         start_time = time.time()
-        e_neg = self.__implication_oracle.check_implication(phi_list, phi)
+        e_neg = self.__implication_oracle.check_implication(phi)
         end_time = time.time()
 
         # Statistics
@@ -139,6 +139,9 @@ class PropertySynthesizer:
                     phi = phi_last_sound
                     neg_may = []
 
+                    self.__synthesis_oracle.clear_negative_may()
+                    self.__precision_oracle.clear_negative_may()
+
                 # MaxSynth is not implemented currently, and this should not be happened
                 elif phi == None:
                     raise NotImplementedError
@@ -160,7 +163,7 @@ class PropertySynthesizer:
                 neg_must += neg_may
                 neg_may = []
 
-                e_neg, phi = self.__check_precision(phi_e, phi_list)
+                e_neg, phi = self.__check_precision(phi_e)
                 if e_neg != None and phi != None:   # Not precise
                     phi_e = phi
                     neg_may.append(e_neg)
@@ -172,16 +175,13 @@ class PropertySynthesizer:
         pos = []
 
         while True:
-            self.__synthesis_oracle.clear_negative_example()
-            self.__precision_oracle.clear_negative_example()
-
             phi_init = self.__synthesize()
             phi, pos, neg_must = self.__synthesize_property(phi_list, phi_init, pos, [])
 
             # Check if most precise candidates improves property. 
             # If neg_must is nonempty, those examples are witness of improvement.
             if len(neg_must) == 0:
-                e_neg = self.__check_improves_predicate(phi_list, phi)
+                e_neg = self.__check_improves_predicate(phi)
                 if e_neg != None:
                     neg_must = [e_neg]
                 else:                    
@@ -192,6 +192,11 @@ class PropertySynthesizer:
             
             phi_list.append(phi)
 
+            self.__precision_oracle.add_spec(phi)
+            self.__implication_oracle.add_spec(phi)
+            self.__synthesis_oracle.clear_negative_example()
+            self.__precision_oracle.clear_negative_example()
+
             if self.__verbose:
                 print("Obtained a best L-property")
                 print_synth_solutions(self.__precision_oracle.spec, phi)
@@ -200,4 +205,5 @@ class PropertySynthesizer:
             self.__inner_iterator = 0
     
     def run(self):
-        self.__synthesize_all_properties()
+        phi_list = self.__synthesize_all_properties()
+        print(phi_list)

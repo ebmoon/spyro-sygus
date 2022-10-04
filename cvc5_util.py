@@ -3,7 +3,7 @@ from collections import defaultdict
 from spyro_ast import ASTVisitor
 from abc import ABC
 
-TIMEOUT = str(300000)
+TIMEOUT = str(300)
 
 reserved_ids = {
     'true': lambda solver: solver.mkTrue(),
@@ -117,7 +117,10 @@ class BaseInitializer(ASTVisitor, ABC):
         return term
 
     def visit_define_constraint_command(self, define_constraint_command):
-        self.solver.addSygusConstraint(define_constraint_command.term.accept(self))
+        constraint = define_constraint_command.term.accept(self)
+        self.solver.addSygusConstraint(constraint)
+
+        return constraint
 
     def visit_define_generator_command(self, define_generator_command):
         g = define_generator_command.grammar.accept(self)
@@ -147,7 +150,7 @@ def define_fun_to_string(f, params, body):
     sort = f.getSort()
     if sort.isFunction():
         sort = f.getSort().getFunctionCodomainSort()
-    result = "(define-fun spec ("
+    result = "(define-fun " + str(f) + " ("
     for i in range(0, len(params)):
         if i > 0:
             result += " "
@@ -165,3 +168,16 @@ def print_synth_solutions(f, sol):
         result += "  " + define_fun_to_string(f, params, body) + "\n"
     result += ")"
     print(result)
+
+cnt = 0
+def make_fresh_spec(solver, f, sol):
+    global cnt
+
+    params = list(sol[0])
+    body = sol[1]
+    sort = f.getSort().getFunctionCodomainSort()
+
+    spec = solver.defineFun(f"spec{cnt}", params, sort, body)
+    cnt += 1
+
+    return spec

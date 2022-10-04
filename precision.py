@@ -30,7 +30,7 @@ class PrecisionOracle(object):
         self.solver.setOption("sygus", "true")
         self.solver.setOption("incremental", "true")
         self.solver.setOption("sygus-grammar-cons", "any-const")
-        self.solver.setOption("tlimit", TIMEOUT)
+        self.solver.setOption("tlimit-per", TIMEOUT)
 
         variables, functions, spec = ast.accept(self.__initializer)
         self.solver.push(2)
@@ -72,6 +72,13 @@ class PrecisionOracle(object):
 
         self.solver.push()
 
+    def clear_negative_may(self):
+        self.solver.pop()     
+        
+        self.neg_may = []
+
+        self.solver.push()
+
     def clear_negative_example(self):
         self.solver.pop(2)
 
@@ -79,15 +86,20 @@ class PrecisionOracle(object):
             self.solver.addSygusConstraint(e_term)        
         
         self.new_pos = []
+        self.neg_may = []
 
         self.solver.push(2)
+    
+    def add_spec(self, spec):
+        self.solver.pop(2)
 
-    def check_precision(self, phi_list, spec):
+        phi_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
+        self.solver.addSygusConstraint(phi_spec)
+
+        self.solver.push(2)        
+
+    def check_precision(self, spec):
         self.solver.push()
-
-        for phi in phi_list:
-            phi_spec = self.solver.mkTerm(Kind.APPLY_UF, phi, *self.variables)
-            self.solver.addSygusConstraint(phi_spec)
 
         constraint_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
         self.solver.addSygusConstraint(constraint_spec)

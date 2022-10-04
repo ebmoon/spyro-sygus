@@ -12,7 +12,7 @@ class ImplicationOracleInitializer(BaseInitializer):
         program.set_logic_command.accept(self)
         variables = [cmd.accept(self) for cmd in program.define_variable_commands]
 
-        return (variables)
+        return variables
 
 class ImplicationOracle(object):
 
@@ -24,20 +24,20 @@ class ImplicationOracle(object):
         self.solver.setOption("sygus", "true")
         self.solver.setOption("incremental", "true")
         self.solver.setOption("sygus-grammar-cons", "any-const")
-        self.solver.setOption("tlimit", TIMEOUT)
+        self.solver.setOption("tlimit-per", TIMEOUT)
         
         variables = ast.accept(self.__initializer)
         
         self.variables = variables
 
+    def add_spec(self, spec):
+        phi_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
+        self.solver.addSygusConstraint(phi_spec)
+
     # Input : Candadate specification as CVC5 term
     # Output : Counterexample as CVC5 term
-    def check_implication(self, phi_list, spec):
+    def check_implication(self, spec):
         self.solver.push()
-
-        for phi in phi_list:
-            phi_spec = self.solver.mkTerm(Kind.APPLY_UF, phi, *self.variables)
-            self.solver.addSygusConstraint(phi_spec)
 
         constraint_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
         spec_neg = self.solver.mkTerm(Kind.NOT, constraint_spec)
