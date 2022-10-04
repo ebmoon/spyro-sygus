@@ -141,3 +141,27 @@ class BaseInitializer(ASTVisitor, ABC):
         self.cxt_functions[define_function_command.identifier] = f
 
         return f
+
+
+def define_fun_to_string(f, params, body):
+    sort = f.getSort()
+    if sort.isFunction():
+        sort = f.getSort().getFunctionCodomainSort()
+    result = "(define-fun spec ("
+    for i in range(0, len(params)):
+        if i > 0:
+            result += " "
+        result += "(" + str(params[i]) + " " + str(params[i].getSort()) + ")"
+    result += ") " + str(sort) + " " + str(body) + ")"
+    return result
+
+def print_synth_solutions(f, sol):
+    result = "(\n"
+    params = []
+    body = sol
+    if sol.getKind() == Kind.LAMBDA:
+        params += sol[0]
+        body = sol[1]
+        result += "  " + define_fun_to_string(f, params, body) + "\n"
+    result += ")"
+    print(result)

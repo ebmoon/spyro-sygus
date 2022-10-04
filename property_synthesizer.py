@@ -1,5 +1,6 @@
 import os
 import time
+from cvc5_util import print_synth_solutions
 
 from parser import SpyroSygusParser
 from synth import SynthesisOracle
@@ -28,9 +29,6 @@ class PropertySynthesizer:
         self.__soundness_oracle = SoundnessOracle(self.__ast)
         self.__precision_oracle = PrecisionOracle(self.__ast)
 
-        # Constants
-        self.__phi_truth = self.__synthesis_oracle.make_true_spec()
-
         # Options
         self.__verbose = True
         self.__timeout = 300
@@ -38,7 +36,7 @@ class PropertySynthesizer:
     def __write_output(self, output):
         self.__outfile.write(output)     
 
-    def __synthesize(self, pos, neg_must, neg_may, lam_functions):
+    def __synthesize(self):
         if self.__verbose:
             print(f'Iteration {self.__outer_iterator} - {self.__inner_iterator}: Try synthesis') 
             self.__inner_iterator += 1
@@ -72,11 +70,13 @@ class PropertySynthesizer:
 
         # Return the result
         if e_pos != None:
+            self.__synthesis_oracle.add_positive_example(e_pos)
+            self.__precision_oracle.add_positive_example(e_pos)
             return (e_pos, False)
         else:
             return (None, elapsed_time >= self.__timeout)
 
-    def __check_precision(self, phi, phi_list, pos, neg_must, neg_may):
+    def __check_precision(self, phi, phi_list):
         if self.__verbose:
             print(f'Iteration {self.__outer_iterator} - {self.__inner_iterator}: Check precision')
             self.__inner_iterator += 1
@@ -91,18 +91,20 @@ class PropertySynthesizer:
 
         # Return the result
         if e_neg != None:
+            self.__synthesis_oracle.add_negative_example(e_neg)
+            self.__precision_oracle.add_negative_example(e_neg)
             return (e_neg, phi)
         else:
             self.__time_last_query = elapsed_time
             return (None, None)
 
-    def __check_improves_predicate(self, phi_list, phi, lam_functions):
+    def __check_improves_predicate(self, phi_list, phi):
         if self.__verbose:
             print(f'Iteration {self.__outer_iterator} : Check termination')
-        
-        
 
-    def __synthesizeProperty(self, phi_list, phi_init, pos, neg_must):
+        raise NotImplementedError
+
+    def __synthesize_property(self, phi_list, phi_init, pos, neg_must):
         # Assume that current phi is sound
         phi_e = phi_init
         phi_last_sound = None
@@ -114,7 +116,7 @@ class PropertySynthesizer:
                 pos.append(e_pos)
                 
                 # First try synthesis
-                phi = self.__synthesize(pos, neg_must, neg_may)
+                phi = self.__synthesize()
                 
                 # If neg_may is a singleton set, it doesn't need to call MaxSynth
                 # Revert to the last remembered sound property 
@@ -141,25 +143,27 @@ class PropertySynthesizer:
 
                 # If phi_e is phi_truth, which is initial candidate of the first call,
                 # then phi_e doesn't rejects examples in neg_may. 
+                self.__synthesis_oracle.freeze_negative_example()
+                self.__precision_oracle.freeze_negative_example()
                 neg_must += neg_may
                 neg_may = []
 
-                e_neg, phi = self.__check_precision(phi_e, phi_list, pos, neg_must, neg_may)
-                if e_neg != None:   # Not precise
+                e_neg, phi = self.__check_precision(phi_e, phi_list)
+                if e_neg != None and phi != None:   # Not precise
                     phi_e = phi
                     neg_may.append(e_neg)
                 else:               # Sound and Precise
                     return (phi_e, pos, neg_must + neg_may)
 
-    def __synthesizeAllProperties(self):
+    def __synthesize_all_properties(self):
         phi_list = []
         pos = []
         lam_functions = {}
 
         while True:
 
-            phi_init = self.__phi_truth
-            phi, pos, neg_must = self.__synthesizeProperty(phi_list, phi_init, pos, [])
+            phi_init = self.__synthesize()
+            phi, pos, neg_must = self.__synthesize_property(phi_list, phi_init, pos, [])
 
             # Check if most precise candidates improves property. 
             # If neg_must is nonempty, those examples are witness of improvement.
@@ -171,16 +175,16 @@ class PropertySynthesizer:
                     return phi_list
 
             # Strengthen the found property to be most precise L-property
-            phi, pos, _ = self.__synthesizeProperty([], phi, pos, neg_must)
+            phi, pos, _ = self.__synthesize_property([], phi, pos, neg_must)
             
             phi_list.append(phi)
 
             if self.__verbose:
                 print("Obtained a best L-property")
-                print(phi + '\n')
+                print_synth_solutions(self.__precision_oracle.spec, phi)
 
             self.__outer_iterator += 1
             self.__inner_iterator = 0
     
     def run(self):
-        self.__synthesizeAllProperties()
+        self.__synthesize_all_properties()

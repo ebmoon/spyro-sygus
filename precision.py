@@ -31,9 +31,10 @@ class PrecisionOracle(object):
         self.solver.setOption("incremental", "true")
         self.solver.setOption("sygus-grammar-cons", "any-const")
         self.solver.setOption("tlimit", TIMEOUT)
-        
+
         variables, functions, spec = ast.accept(self.__initializer)
-        
+        self.solver.push(2)
+
         self.variables = variables
         self.functions = functions
         self.spec = spec
@@ -41,64 +42,60 @@ class PrecisionOracle(object):
         self.new_pos = []
         self.neg_may = []
 
-        self.solver.push(1)
-        self.solver.push(2)
-
     def add_positive_example(self, e):
-        self.solver.pop(2)
+        self.solver.pop()
 
         term = self.solver.mkTerm(Kind.APPLY_UF, self.spec, *e)
         
-        self.addSygusConstraint(term)
+        self.solver.addSygusConstraint(term)
         self.new_pos.append(term)
 
-        self.solver.push(2)
+        self.solver.push()
 
         for e_term in self.neg_may:
-            self.addSygusConstraint(e_term)
+            self.solver.addSygusConstraint(e_term)
 
     def add_negative_example(self, e):
         term = self.solver.mkTerm(Kind.APPLY_UF, self.spec, *e)
         neg_term = self.solver.mkTerm(Kind.NOT, term)
         
-        self.addSygusConstraint(neg_term)
+        self.solver.addSygusConstraint(neg_term)
         self.neg_may.append(neg_term)
 
     def freeze_negative_example(self):
-        self.solver.pop(2)
+        self.solver.pop()
 
         for e_term in self.neg_may:
-            self.addSygusConstraint(e_term)
-        
+            self.solver.addSygusConstraint(e_term)
+    
         self.neg_may = []
 
-        self.solver.push(2)
+        self.solver.push()
 
     def clear_negative_example(self):
         self.solver.pop(2)
-        self.solver.pop(1)
 
         for e_term in self.new_pos:
-            self.addSygusConstraint(e_term)        
+            self.solver.addSygusConstraint(e_term)        
         
         self.new_pos = []
 
-        self.solver.push(1)
         self.solver.push(2)
 
     def check_precision(self, spec):
-        self.solver.push(3)
-        
+        self.solver.push()
+
         constraint_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
         self.solver.addSygusConstraint(constraint_spec)
 
         if self.solver.checkSynth().hasSolution():
             const_soln = self.solver.getSynthSolutions(self.variables)
             spec_soln = self.solver.getSynthSolution(self.spec)
-            self.solver.pop(3)
+
+            self.solver.pop()
             return (const_soln, spec_soln)
         else:
-            self.solver.pop(3)
+            self.solver.pop()
             return (None, None)
 
         
