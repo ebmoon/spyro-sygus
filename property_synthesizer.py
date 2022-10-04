@@ -1,11 +1,13 @@
 import os
 import time
 from cvc5_util import print_synth_solutions
+from implication import ImplicationOracle
 
 from parser import SpyroSygusParser
 from synth import SynthesisOracle
 from soundness import SoundnessOracle
 from precision import PrecisionOracle
+from implication import ImplicationOracle
 from util import *
 import cvc5
 
@@ -28,6 +30,7 @@ class PropertySynthesizer:
         self.__synthesis_oracle = SynthesisOracle(self.__ast)
         self.__soundness_oracle = SoundnessOracle(self.__ast)
         self.__precision_oracle = PrecisionOracle(self.__ast)
+        self.__implication_oracle = ImplicationOracle(self.__ast)
 
         # Options
         self.__verbose = True
@@ -83,7 +86,7 @@ class PropertySynthesizer:
 
         # Run CVC5
         start_time = time.time()
-        e_neg, phi = self.__precision_oracle.check_precision(phi)
+        e_neg, phi = self.__precision_oracle.check_precision(phi_list, phi)
         end_time = time.time()
 
         # Update statistics
@@ -102,7 +105,19 @@ class PropertySynthesizer:
         if self.__verbose:
             print(f'Iteration {self.__outer_iterator} : Check termination')
 
-        raise NotImplementedError
+        # Run CVC5
+        start_time = time.time()
+        e_neg = self.__implication_oracle.check_implication(phi_list, phi)
+        end_time = time.time()
+
+        # Statistics
+        elapsed_time = end_time - start_time
+
+        # Return the result
+        if e_neg != None:
+            return e_neg
+        else:
+            return None
 
     def __synthesize_property(self, phi_list, phi_init, pos, neg_must):
         # Assume that current phi is sound
@@ -133,9 +148,6 @@ class PropertySynthesizer:
             # Return the last sound property found
             elif timeout and phi_last_sound != None:
                 return (phi_last_sound, pos, neg_must + neg_may)
-
-            elif timeout:
-                return (self.__phi_truth, pos, [])
             
             # Check precision after pass soundness check
             else:
@@ -158,9 +170,10 @@ class PropertySynthesizer:
     def __synthesize_all_properties(self):
         phi_list = []
         pos = []
-        lam_functions = {}
 
         while True:
+            self.__synthesis_oracle.clear_negative_example()
+            self.__precision_oracle.clear_negative_example()
 
             phi_init = self.__synthesize()
             phi, pos, neg_must = self.__synthesize_property(phi_list, phi_init, pos, [])
@@ -168,7 +181,7 @@ class PropertySynthesizer:
             # Check if most precise candidates improves property. 
             # If neg_must is nonempty, those examples are witness of improvement.
             if len(neg_must) == 0:
-                e_neg = self.__check_improves_predicate(phi_list, phi, lam_functions)
+                e_neg = self.__check_improves_predicate(phi_list, phi)
                 if e_neg != None:
                     neg_must = [e_neg]
                 else:                    

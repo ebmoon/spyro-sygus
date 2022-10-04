@@ -82,8 +82,12 @@ class PrecisionOracle(object):
 
         self.solver.push(2)
 
-    def check_precision(self, spec):
+    def check_precision(self, phi_list, spec):
         self.solver.push()
+
+        for phi in phi_list:
+            phi_spec = self.solver.mkTerm(Kind.APPLY_UF, phi, *self.variables)
+            self.solver.addSygusConstraint(phi_spec)
 
         constraint_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
         self.solver.addSygusConstraint(constraint_spec)
