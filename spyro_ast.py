@@ -32,19 +32,15 @@ class ASTVisitor(object):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_define_variable_command(self, define_variable_command):
+    def visit_declare_language_command(self, declare_syntax_command):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_define_constraint_command(self, define_constraint_command):
+    def visit_declare_semantics_command(self, declare_semantics_command):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_define_generator_command(self, define_generator_command):
-        raise NotImplementedError
-
-    @abstractmethod
-    def visit_define_function_command(self, define_function_command):
+    def visit_target_function_command(self, target_function_command):
         raise NotImplementedError
 
     @abstractmethod
@@ -118,18 +114,6 @@ class FunctionApplicationTerm(Term):
         args_str = " ".join([str(arg) for arg in self.args])
         return f"({self.identifier} {args_str})"
 
-class ConstantTerm(Term):
-
-    def __init__(self, sort):
-        super().__init__()
-        self.sort = sort
-
-    def accept(self, visitor: ASTVisitor):
-        return visitor.visit_constant_term(self)
-
-    def __str__(self):
-        return f"(Constant {self.sort})"
-
 class ProductionRule(AST):
 
     def __init__(self, head_symbol, sort, terms):
@@ -164,93 +148,75 @@ class Grammar(AST):
 
 @unique
 class CommandKind(Enum):
-    DEFINE_VAR = auto()
-    DEFINE_CONSTRAINT = auto()
-    DEFINE_GENERATOR = auto()
-    DEFINE_FUN = auto()
+    TARGET_FUN = auto()
+    LANG_SYN = auto()
+    LANG_SEM = auto()
 
 class Command(AST, ABC):
     
     def __init__(self, command_kind: CommandKind):
         self.command_kind = command_kind
 
-class DefineVariableCommand(Command):
-
-    def __init__(self, identifier, sort, grammar):
-        super().__init__(CommandKind.DEFINE_VAR)
-        self.identifier = identifier
-        self.sort = sort
-        self.grammar = grammar
+class DeclareLanguageCommand(Command):
+    
+    def __init__(self, nonterminals, rules):
+        super().__init__(CommandKind.LANG_SYN)
+        self.nonterminals = nonterminals
+        self.syntactic_rules = rules
 
     def accept(self, visitor: ASTVisitor):
-        return visitor.visit_define_variable_command(self)
+        return visitor.visit_declare_language_command(self)
 
     def __str__(self):
-        return f"(define-var {self.identifier} {self.sort} {self.grammar})"
+        nons_str = " ".join([f"({symbol} {sort})" for (symbol, sort) in self.nonterminals])
+        rules_str = "\r\n".join([str(rule) for rule in self.syntactic_rules])
 
-class DefineConstraintCommand(Command):
+        return f"(declare-language \r\n ({nons_str}) \r\n\r\n ({rules_str}))"
 
-    def __init__(self, term):
-        super().__init__(CommandKind.DEFINE_CONSTRAINT)
+class DeclareSemanticsCommand(Command):
+
+    def __init__(self, rules):
+        super().__init__(CommandKind.LANG_SYN)
+        self.semantic_rules = rules
+
+    def accept(self, visitor: ASTVisitor):
+        return visitor.visit_declare_semantics_command(self)
+
+    def __str__(self):
+        rules_str = "\r\n".join([str(rule) for rule in self.semantic_rules])
+
+        return f"(declare-semantics \r\n ({rules_str}) \r\n)"
+
+class TargetFunctionCommand(Command):
+
+    def __init__(self, identifier, inputs, output, term):
+        super().__init__(CommandKind.TARGET_FUN)
+        self.identifier = identifier
+        self.inputs = inputs
+        self.output = output
         self.term = term
 
     def accept(self, visitor: ASTVisitor):
-        return visitor.visit_define_constraint_command(self)
+        return visitor.visit_target_function_command(self)
 
     def __str__(self):
-        return f"(constraint {str(self.term)})"
-
-class DefineGeneratorCommand(Command):
-
-    def __init__(self, grammar):
-        super().__init__(CommandKind.DEFINE_GENERATOR)
-        self.grammar = grammar
-
-    def accept(self, visitor: ASTVisitor):
-        return visitor.visit_define_generator_command(self)
-
-    def __str__(self):
-        return f"(generator {self.grammar})"
-
-class DefineFunctionCommand(Command):
-
-    def __init__(self, identifier, args, sort, term):
-        super().__init__(CommandKind.DEFINE_FUN)
-        self.identifier = identifier
-        self.args = args
-        self.sort = sort
-        self.term = term
-
-    def accept(self, visitor: ASTVisitor):
-        return visitor.visit_define_function_command(self)
-
-    def __str__(self):
-        args_str = " ".join([f"({symbol} {sort})" for (symbol, sort) in self.args])
-        return f"(define-fun {self.identifier} ({args_str}) {self.sort} {self.term})"
+        inputs_str = " ".join([f"({symbol} {sort})" for (symbol, sort) in self.inputs])
+        out_id, out_sort = self.output
+        return f"(target-fun {self.identifier} ({inputs_str}) ({out_id} {out_sort}) {self.term})"
 
 class Program(AST):
-    def __init__(self,
-            set_logic_command,
-            define_variable_commands,
-            define_function_commands,
-            generator,
-            define_constraint_commands):
+    def __init__(self, target_functions, lang_syntax, lang_semantics):
         
-        self.set_logic_command = set_logic_command
-        self.define_variable_commands = define_variable_commands
-        self.define_constraint_commands = define_constraint_commands
-        self.generator = generator
-        self.define_function_commands = define_function_commands
+        self.target_functions = target_functions
+        self.lang_syntax = lang_syntax
+        self.lang_semantics = lang_semantics
 
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_program(self)
 
     def __str__(self):
-        s = f"{self.set_logic_command}" + "\r\n\r\n"
-        s += "\r\n".join([str(cmd) for cmd in self.define_variable_commands]) + "\r\n\r\n"
-        s += "\r\n".join([str(cmd) for cmd in self.define_function_commands]) + "\r\n\r\n"
-        s += str(self.generator) + "\r\n\r\n"
-        s += "\r\n".join([str(cmd) for cmd in self.define_constraint_commands])
-        
+        s + "\r\n".join([str(cmd) for cmd in self.target_functions]) + "\r\n\r\n"
+        s += str(self.lang_syntax) + "\r\n\r\n"
+        s += str(self.lang_semantics) 
 
         return s

@@ -7,26 +7,36 @@ class SpyroSygusParser(object):
     tokens = SpyroSygusLexer.tokens
 
     def p_program(self, p):
-        """program : variable_plus function_plus generator constraint_plus"""
+        """program : target_fun_plus declare_language declare_semantics"""
         
         p[0] = Program(p[1], p[2], p[3], p[4])
         self._ast_root = p[0]
 
-    def p_variable_plus(self, p):
-        """variable_plus : variable_plus variable
-                         | variable"""
+    def p_target_fun_plus(self, p):
+        """target_fun_plus : target_fun_plus target_fun
+                           | target_fun"""
         if 2 == len(p):
             p[0] = [p[1]]
         else:
-            p[0] = p[1] + [p[2]]
+            p[0] = p[1] + [p[2]]        
 
-    def p_variable(self, p):
-        """variable : TK_LPAREN TK_DEFINE_VARIABLE TK_SYMBOL sort grammar TK_RPAREN"""
-        p[0] = DefineVariableCommand(p[3], p[4], p[5])
+    def p_target_fun(self, p):
+        """target_fun : TK_LPAREN TK_TARGET_FUN TK_SYMBOL 
+                        TK_LPAREN arg_plus TK_RPAREN 
+                        TK_LPAREN arg TK_RPAREN term TK_RPAREN"""
+        p[0] = TargetFunctionCommand(p[3], p[5], p[8], p[10])
 
-    def p_sort(self, p):
-        """sort : TK_SYMBOL"""
-        p[0] = SortExpression(p[1])
+    def p_arg_plus(self, p):
+        """arg_plus : arg_plus arg
+                    | arg"""
+        if 2 == len(p):
+            p[0] = [p[1]]
+        else:
+            p[0] = p[1] + [p[2]]        
+
+    def p_arg(self, p):
+        """arg : TK_LPAREN TK_SYMBOL sort TK_RPAREN"""
+        p[0] = (p[2], p[3])
 
     def p_sort_star(self, p):
         """sort_star : sort_plus
@@ -44,6 +54,10 @@ class SpyroSygusParser(object):
         else:
             p[0] = p[1] + [p[2]]    
 
+    def p_sort(self, p):
+        """sort : TK_SYMBOL"""
+        p[0] = SortExpression(p[1])
+
     def p_term_plus(self, p):
         """term_plus : term_plus term
                      | term"""
@@ -60,10 +74,6 @@ class SpyroSygusParser(object):
         """numeral : TK_NUMERAL"""
         p[0] = NumeralTerm(p[1])
 
-    def p_constant(self, p):
-        """constant : TK_LPAREN TK_CONSTANT sort TK_RPAREN"""
-        p[0] = ConstantTerm(p[3])
-
     def p_app(self, p):
         """app : TK_LPAREN TK_SYMBOL sort_star TK_RPAREN"""
         p[0] = FunctionApplicationTerm(p[2], p[3])
@@ -71,31 +81,15 @@ class SpyroSygusParser(object):
     def p_term(self, p):
         """term : symbol
                 | numeral
-                | app
-                | constant"""
+                | app"""
         p[0] = p[1]       
     
-    def p_constraint_plus(self, p):
-        """constraint_plus : constraint_plus constraint
-                           | constraint"""
-        if 2 == len(p):
-            p[0] = [p[1]]
-        else:
-            p[0] = p[1] + [p[2]]
+    def p_declare_language(self, p):
+        """declare_language : TK_LPAREN TK_DECLARE_LANGUAGE 
+                              TK_LPAREN nonterminal_plus TK_RPAREN 
+                              TK_LPAREN rule_plus TK_RPAREN TK_RPAREN"""
+        p[0] = DeclareLanguageCommand(p[4], p[7])
     
-    def p_constraint(self, p):
-        """constraint : TK_LPAREN TK_DEFINE_CONSTRAINT term TK_RPAREN"""
-        p[0] = DefineConstraintCommand(p[3])
-
-    def p_generator(self, p):
-        """generator : TK_LPAREN TK_DEFINE_GENERATOR grammar TK_RPAREN"""
-        p[0] = DefineGeneratorCommand(p[3])
-    
-    def p_grammar(self, p):
-        """grammar : TK_LPAREN nonterminal_plus TK_RPAREN TK_LPAREN rule_plus TK_RPAREN """
-
-        p[0] = Grammar(p[2], p[5])
-
     def p_nonterminal_plus(self, p):
         """nonterminal_plus : nonterminal_plus nonterminal
                             | nonterminal"""
@@ -106,8 +100,16 @@ class SpyroSygusParser(object):
 
     def p_nonterminal(self, p):
         """nonterminal : TK_LPAREN TK_SYMBOL sort TK_RPAREN"""
-
         p[0] = (p[2], p[3])
+
+    def p_declare_semantics(self, p):
+        """declare_semantics : TK_LPAREN TK_DECLARE_SEMANTICS sem_plus TK_RPAREN"""
+        p[0] = DeclareSemanticsCommand(p[3])
+    
+    def p_grammar(self, p):
+        """grammar : TK_LPAREN nonterminal_plus TK_RPAREN TK_LPAREN rule_plus TK_RPAREN """
+
+        p[0] = Grammar(p[2], p[5])
 
     def p_rule_plus(self, p):
         """rule_plus : rule_plus rule
@@ -132,18 +134,6 @@ class SpyroSygusParser(object):
     def p_function(self, p):
         """function : TK_LPAREN TK_DEFINE_FUN TK_SYMBOL TK_LPAREN arg_plus TK_RPAREN sort term TK_RPAREN"""
         p[0] = DefineFunctionCommand(p[3], p[5], p[7], p[8])
-    
-    def p_arg_plus(self, p):
-        """arg_plus : arg_plus arg
-                    | arg"""
-        if 2 == len(p):
-            p[0] = [p[1]]
-        else:
-            p[0] = p[1] + [p[2]]        
-
-    def p_arg(self, p):
-        """arg : TK_LPAREN TK_SYMBOL sort TK_RPAREN"""
-        p[0] = (p[2], p[3])
 
     def p_error(self, p):
         if p:
