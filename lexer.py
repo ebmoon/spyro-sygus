@@ -2,31 +2,30 @@ import ply.lex
 
 class SpyroSygusLexer(object):
     reserved = {
-        'set-logic': 'TK_SET_LOGIC',
-        'define-var': 'TK_DEFINE_VARIABLE',
-        'constraint': 'TK_DEFINE_CONSTRAINT',
-        'generator': 'TK_DEFINE_GENERATOR',
-        'define-fun': 'TK_DEFINE_FUN',
-        'Constant': 'TK_CONSTANT'
+        'target-fun': 'TK_TARGET_FUN',
+        'declare-language': 'TK_DECLARE_LANGUAGE',
+        'declare-semantics': 'TK_DECLARE_SEMANTICS'
     }
     
     tokens = [
         'TK_LPAREN',
         'TK_RPAREN',
         'TK_NUMERAL',
-        'TK_SYMBOL'
+        'TK_SYMBOL',
+        'TK_SYNTAX'
     ]
 
     tokens += list(set(reserved.values()))
 
     t_TK_LPAREN = r'\('
     t_TK_RPAREN = r'\)'
+    t_TK_SYNTAX = r'\$'
 
     _zero = r'0'
     _nonzero = r'[1-9]'
     _digit = r'[0-9]'
     _numeral = f'(?:{_zero})|(?:{_nonzero}(?:{_digit})*)'
-    _symbolcc = r'(?:[a-zA-Z_&!~<>=/%]|@|\+|-|\*|\||\?|\.|\$|\^)'
+    _symbolcc = r'(?:[a-zA-Z_&!~<>=/%]|@|\+|-|\*|\||\?|\.|\^)'
     _symbol = f'{_symbolcc}(?:(?:{_symbolcc})|(?:{_digit}))*'
 
     t_ignore = ' \t\f\r'
