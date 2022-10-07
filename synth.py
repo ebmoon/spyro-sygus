@@ -94,7 +94,15 @@ class SynthesisOracle(object):
         self.solver.push(2)
 
     def synthesize(self):
-        if self.solver.checkSynth().hasSolution():
+        synthResult = self.solver.checkSynth()
+        if synthResult.hasSolution():
+            return self.solver.getSynthSolution(self.spec)
+        else:
+            return None
+            
+    def synthesize_next(self):
+        synthResult = self.solver.checkSynthNext()
+        if synthResult.hasSolution():
             return self.solver.getSynthSolution(self.spec)
         else:
             return None

@@ -13,9 +13,7 @@ class SoundnessOracleInitializer(BaseInitializer):
         variables = [cmd.accept(self) for cmd in program.define_variable_commands]
         functions = [cmd.accept(self) for cmd in program.define_function_commands]
         constraints = [cmd.accept(self) for cmd in program.define_constraint_commands]
-
-        print(constraints)
-
+        
         return (variables, functions, constraints)
 
 class SoundnessOracle(object):

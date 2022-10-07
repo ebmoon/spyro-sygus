@@ -13,7 +13,7 @@ import cvc5
 
 
 class PropertySynthesizer:
-    def __init__(self, infile, outfile):
+    def __init__(self, infile, outfile, v):
 
         # Input/Output file stream
         self.__infile = infile
@@ -33,7 +33,7 @@ class PropertySynthesizer:
         self.__implication_oracle = ImplicationOracle(self.__ast)
 
         # Options
-        self.__verbose = True
+        self.__verbose = v
         self.__timeout = 300
 
     def __write_output(self, output):
@@ -79,14 +79,14 @@ class PropertySynthesizer:
         else:
             return (None, elapsed_time >= self.__timeout)
 
-    def __check_precision(self, phi):
+    def __check_precision(self, phi_list, phi):
         if self.__verbose:
             print(f'Iteration {self.__outer_iterator} - {self.__inner_iterator}: Check precision')
             self.__inner_iterator += 1
 
         # Run CVC5
         start_time = time.time()
-        e_neg, phi = self.__precision_oracle.check_precision(phi)
+        e_neg, phi = self.__precision_oracle.check_precision(phi_list, phi)
         end_time = time.time()
 
         # Update statistics
@@ -114,10 +114,7 @@ class PropertySynthesizer:
         elapsed_time = end_time - start_time
 
         # Return the result
-        if e_neg != None:
-            return e_neg
-        else:
-            return None
+        return e_neg
 
     def __synthesize_property(self, phi_list, phi_init, pos, neg_must):
         # Assume that current phi is sound
@@ -127,14 +124,18 @@ class PropertySynthesizer:
 
         while True:
             e_pos, timeout = self.__check_soundness(phi_e)
+            if self.__verbose:
+                print(e_pos)
             if e_pos != None:
                 pos.append(e_pos)
                 
                 # First try synthesis
                 phi = self.__synthesize()
-                
+                if self.__verbose:
+                    print(phi)
+
                 # If neg_may is a singleton set, it doesn't need to call MaxSynth
-                # Revert to the last remembered sound property 
+                # Revert back to the last sound property we found
                 if phi == None and len(neg_may) == 1 and phi_last_sound != None:
                     phi = phi_last_sound
                     neg_may = []
@@ -163,12 +164,14 @@ class PropertySynthesizer:
                 neg_must += neg_may
                 neg_may = []
 
-                e_neg, phi = self.__check_precision(phi_e)
+                e_neg, phi = self.__check_precision(phi_list, phi_e)
+                if self.__verbose:
+                    print(e_neg, phi)
                 if e_neg != None and phi != None:   # Not precise
                     phi_e = phi
                     neg_may.append(e_neg)
-                else:               # Sound and Precise
-                    return (phi_e, pos, neg_must + neg_may)
+                else:                               # Sound and Precise
+                    return (phi_e, pos, neg_must)
 
     def __synthesize_all_properties(self):
         phi_list = []
@@ -184,7 +187,7 @@ class PropertySynthesizer:
                 e_neg = self.__check_improves_predicate(phi)
                 if e_neg != None:
                     neg_must = [e_neg]
-                else:                    
+                else:            
                     return phi_list
 
             # Strengthen the found property to be most precise L-property
@@ -192,7 +195,6 @@ class PropertySynthesizer:
             
             phi_list.append(phi)
 
-            self.__precision_oracle.add_spec(phi)
             self.__implication_oracle.add_spec(phi)
             self.__synthesis_oracle.clear_negative_example()
             self.__precision_oracle.clear_negative_example()

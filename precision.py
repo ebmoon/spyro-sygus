@@ -88,28 +88,28 @@ class PrecisionOracle(object):
         self.new_pos = []
         self.neg_may = []
 
-        self.solver.push(2)
-    
-    def add_spec(self, spec):
-        self.solver.pop(2)
+        self.solver.push(2)      
 
-        phi_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
-        self.solver.addSygusConstraint(phi_spec)
-
-        self.solver.push(2)        
-
-    def check_precision(self, spec):
+    def check_precision(self, phi_list, spec):
         self.solver.push()
+
+        for phi in phi_list:
+            phi_spec = self.solver.mkTerm(Kind.APPLY_UF, phi, *self.variables)
+            self.solver.addSygusConstraint(phi_spec)
 
         constraint_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
         self.solver.addSygusConstraint(constraint_spec)
 
-        if self.solver.checkSynth().hasSolution():
+        synthResult = self.solver.checkSynth()
+        if synthResult.hasSolution():
             const_soln = self.solver.getSynthSolutions(self.variables)
             spec_soln = self.solver.getSynthSolution(self.spec)
 
             self.solver.pop()
             return (const_soln, spec_soln)
+        elif synthResult.hasNoSolution():
+            self.solver.pop()
+            return (None, None)
         else:
             self.solver.pop()
             return (None, None)

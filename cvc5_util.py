@@ -10,6 +10,7 @@ reserved_ids = {
     'false': lambda solver: solver.mkFalse()
 }
 
+MINUS = '-'
 reserved_functions = {
     '<': Kind.LT,
     '<=': Kind.LEQ,
@@ -60,7 +61,9 @@ class BaseInitializer(ASTVisitor, ABC):
     def visit_function_application_term(self, function_application_term):
         kind = kind_dict[function_application_term.identifier]
         arg_terms = [arg.accept(self) for arg in function_application_term.args]
-        if function_application_term.identifier in reserved_functions:
+        if function_application_term.identifier == MINUS and len(arg_terms) == 1:
+            return self.solver.mkTerm(Kind.NEG, *arg_terms)
+        elif function_application_term.identifier in reserved_functions:
             return self.solver.mkTerm(kind, *arg_terms)
         else:
             return self.solver.mkTerm(kind, self.cxt_functions[function_application_term.identifier], *arg_terms)
@@ -144,7 +147,6 @@ class BaseInitializer(ASTVisitor, ABC):
         self.cxt_functions[define_function_command.identifier] = f
 
         return f
-
 
 def define_fun_to_string(f, params, body):
     sort = f.getSort()

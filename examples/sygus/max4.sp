@@ -30,7 +30,7 @@
 
     ((B Bool (true AP (or AP AP) (or AP AP AP) (or AP AP AP AP)))
      (AP Bool ((= I I) (<= I I) (>= I I) (> I I) (< I I) (distinct I I)))
-     (I Int (x1 x2 x3 o)))
+     (I Int (x1 x2 x3 x4 o)))
 )
 
 (constraint (= o (max4 x1 x2 x3 x4)))
