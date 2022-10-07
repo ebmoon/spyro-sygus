@@ -20,7 +20,7 @@ class ASTVisitor(object):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_constant_term(self, constant_term):
+    def visit_syntactic_rule(self, syntactic_rule):
         raise NotImplementedError
 
     @abstractmethod
@@ -28,7 +28,11 @@ class ASTVisitor(object):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_grammar(self, grammar):
+    def visit_semantic_rule(self, semantic_rule):
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_production_match(self, production_match):
         raise NotImplementedError
 
     @abstractmethod
@@ -114,12 +118,23 @@ class FunctionApplicationTerm(Term):
         args_str = " ".join([str(arg) for arg in self.args])
         return f"({self.identifier} {args_str})"
 
+class SyntacticRule(AST):
+
+    def __init__(self, productions):
+        self.productions = productions
+
+    def accept(self, visitor: ASTVisitor):
+        return visitor.visit_syntactic_rule(self)
+
+    def __str__(self):
+        productions_str = " ".join([str(p) for p in self.productions])
+        return f"({productions_str})"
+
 class ProductionRule(AST):
 
-    def __init__(self, head_symbol, sort, terms):
+    def __init__(self, head_symbol, sorts):
         self.head_symbol = head_symbol
-        self.sort = sort
-        self.terms = terms
+        self.sorts = sorts
 
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_production_rule(self)
@@ -127,6 +142,32 @@ class ProductionRule(AST):
     def __str__(self):
         terms_str = " ".join([str(term) for term in self.terms])
         return f"({self.head_symbol} {self.sort} ({terms_str}))"
+
+class SemanticRule(AST):
+
+    def __init__(self, nonterminal, match, term):
+        self.nonterminal = nonterminal
+        self.match = match
+        self.term = term
+
+    def accept(self, visitor: ASTVisitor):
+        return visitor.visit_semantic_rule(self)
+
+    def __str__(self):
+        return f"({self.nonterminal} {self.match} {self.term})"
+
+class ProductionMatch(AST):
+
+    def __init__(self, identifier, variables):
+        self.identifier = identifier
+        self.variables = variables
+
+    def accept(self, visitor: ASTVisitor):
+        return visitor.visit_production_match(self)
+
+    def __str__(self):
+        vars_str = " ".join(self.variables)
+        return f"({self.identifier} {vars_str})"
 
 class Grammar(AST):
 

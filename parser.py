@@ -1,3 +1,4 @@
+from ast import match_case
 import ply.yacc
 
 from lexer import SpyroSygusLexer
@@ -87,7 +88,7 @@ class SpyroSygusParser(object):
     def p_declare_language(self, p):
         """declare_language : TK_LPAREN TK_DECLARE_LANGUAGE 
                               TK_LPAREN nonterminal_plus TK_RPAREN 
-                              TK_LPAREN rule_plus TK_RPAREN TK_RPAREN"""
+                              TK_LPAREN syntactic_rule_plus TK_RPAREN TK_RPAREN"""
         p[0] = DeclareLanguageCommand(p[4], p[7])
     
     def p_nonterminal_plus(self, p):
@@ -102,38 +103,57 @@ class SpyroSygusParser(object):
         """nonterminal : TK_LPAREN TK_SYMBOL sort TK_RPAREN"""
         p[0] = (p[2], p[3])
 
+    def p_syntactic_rule_plus(self, p):
+        """syntactic_rule_plus : syntactic_rule_plus syntactic_rule
+                               | syntactic_rule"""
+        if 2 == len(p):
+            p[0] = [p[1]]
+        else:
+            p[0] = p[1] + [p[2]]
+
+    def p_syntactic_rule(self, p):
+        """syntactic_rule : TK_LPAREN production_plus TK_RPAREN"""
+        p[0] = SyntacticRule(p[2])
+
+    def p_production_plus(self, p):
+        """production_plus : production_plus production
+                           | production"""
+        if 2 == len(p):
+            p[0] = [p[1]]
+        else:
+            p[0] = p[1] + [p[2]]
+    
+    def p_production(self, p):
+        """production : TK_LPAREN TK_PRODUCTION sort_star TK_RPAREN """
+        p[0] = ProductionRule(p[2], p[3])
+
     def p_declare_semantics(self, p):
         """declare_semantics : TK_LPAREN TK_DECLARE_SEMANTICS sem_plus TK_RPAREN"""
         p[0] = DeclareSemanticsCommand(p[3])
-    
-    def p_grammar(self, p):
-        """grammar : TK_LPAREN nonterminal_plus TK_RPAREN TK_LPAREN rule_plus TK_RPAREN """
 
-        p[0] = Grammar(p[2], p[5])
-
-    def p_rule_plus(self, p):
-        """rule_plus : rule_plus rule
-                     | rule"""
+    def p_sem_plus(self, p):
+        """sem_plus : sem_plus sem
+                    | sem"""
         if 2 == len(p):
             p[0] = [p[1]]
         else:
             p[0] = p[1] + [p[2]]
 
-    def p_rule(self, p):
-        """rule : TK_LPAREN TK_SYMBOL sort TK_LPAREN term_plus TK_RPAREN TK_RPAREN"""
-        p[0] = ProductionRule(p[2], p[3], p[5])
+    def p_sem(self, p):
+        """sem : TK_LPAREN TK_SYMBOL match term TK_RPAREN"""
+        p[0] = SemanticRule(p[2], p[3], p[4])
 
-    def p_function_plus(self, p):
-        """function_plus : function_plus function
-                         | function"""
+    def p_match(self, p):
+        """match : TK_LPAREN TK_PRODUCTION var_plus TK_RPAREN"""
+        p[0] = ProductionMatch(p[2], p[3])
+
+    def p_var_plus(self, p):
+        """var_plus : var_plus TK_SYMBOL
+                    | TK_SYMBOL"""
         if 2 == len(p):
             p[0] = [p[1]]
         else:
-            p[0] = p[1] + [p[2]]
-
-    def p_function(self, p):
-        """function : TK_LPAREN TK_DEFINE_FUN TK_SYMBOL TK_LPAREN arg_plus TK_RPAREN sort term TK_RPAREN"""
-        p[0] = DefineFunctionCommand(p[3], p[5], p[7], p[8])
+            p[0] = p[1] + [p[2]]    
 
     def p_error(self, p):
         if p:

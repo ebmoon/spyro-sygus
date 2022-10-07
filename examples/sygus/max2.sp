@@ -17,7 +17,7 @@
 
 ;; Semantic rules
 (declare-semantics 
-    (B $t true)
+    (B ($t) true)
     (B ($or_1 apt1) apt1)
     (B ($or_2 apt1 apt2) (or apt1 apt2))
     (B ($or_2 apt1 apt2) (or apt1 apt2 apt3))
@@ -29,7 +29,7 @@
     (AP ($gt it1 it2) (> it1 it2))
     (AP ($neq it1 it2) (distinct it1 it2))
 
-    (I $x1 x1)
-    (I $x2 x2)
-    (I $o o)
+    (I ($x1) x1)
+    (I ($x2) x2)
+    (I ($o) o)
 )
