@@ -1,4 +1,4 @@
-from cvc5 import Kind
+from z3 import *
 from collections import defaultdict
 from spyro_ast import ASTVisitor
 from abc import ABC
@@ -6,30 +6,26 @@ from abc import ABC
 TIMEOUT = str(300)
 
 reserved_ids = {
-    'true': lambda solver: solver.mkTrue(),
-    'false': lambda solver: solver.mkFalse()
+    'true': True,
+    'false': False
 }
 
 MINUS = '-'
 reserved_functions = {
-    '<': Kind.LT,
-    '<=': Kind.LEQ,
-    '>': Kind.GT,
-    '>=': Kind.GEQ,
-    '=': Kind.EQUAL,
-    'distinct': Kind.DISTINCT,
-    'ite': Kind.ITE,
-    '+': Kind.ADD,
-    '*': Kind.MULT,
-    '-': Kind.SUB,
-    'or': Kind.OR,
-    'and': Kind.AND,
-    'not': Kind.NOT
+    '<': lambda x, y: x < y,
+    '<=': lambda x, y: x <= y,
+    '>': lambda x, y: x > y,
+    '>=': lambda x, y: x >= y,
+    '=': lambda x, y: x == y,
+    'distinct': lambda x, y: x != y,
+    'ite': IF,
+    '+': lambda x, y: x + y,
+    '*': lambda x, y: x * y,
+    '-': lambda x, y: x - y,
+    'or': Or,
+    'and': And,
+    'not': Not
 }
-
-kind_dict = defaultdict(lambda: Kind.APPLY_UF)
-for k, v in reserved_functions.items():
-    kind_dict[k] = v
 
 class BaseInitializer(ASTVisitor, ABC):
     
@@ -43,26 +39,26 @@ class BaseInitializer(ASTVisitor, ABC):
     def visit_sort_expression(self, sort_expression):
         identifier = sort_expression.identifier
         if (identifier == "Int"):
-            return self.solver.getIntegerSort()
+            return IntSort()
         elif (identifier == "Bool"):
-            return self.solver.getBooleanSort()
+            return BoolSort()
         else:
             raise NotImplementedError
 
     def visit_identifier_term(self, identifier_term):
         if identifier_term.identifier in reserved_ids:
-            return reserved_ids[identifier_term.identifier](self.solver)
+            return reserved_ids[identifier_term.identifier]
         else:
             return self.cxt_variables[identifier_term.identifier]
 
     def visit_numeral_term(self, numeral_term):
-        return self.solver.mkInteger(numeral_term.value)
+        return numeral_term.value
 
     def visit_function_application_term(self, function_application_term):
         kind = kind_dict[function_application_term.identifier]
         arg_terms = [arg.accept(self) for arg in function_application_term.args]
         if function_application_term.identifier == MINUS and len(arg_terms) == 1:
-            return self.solver.mkTerm(Kind.NEG, *arg_terms)
+            return (- arg_terms[0])
         elif function_application_term.identifier in reserved_functions:
             return self.solver.mkTerm(kind, *arg_terms)
         else:

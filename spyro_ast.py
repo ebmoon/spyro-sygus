@@ -32,10 +32,6 @@ class ASTVisitor(object):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_set_logic_command(self, set_logic_command):
-        raise NotImplementedError
-
-    @abstractmethod
     def visit_define_variable_command(self, define_variable_command):
         raise NotImplementedError
 
@@ -168,7 +164,6 @@ class Grammar(AST):
 
 @unique
 class CommandKind(Enum):
-    SET_LOGIC = auto()
     DEFINE_VAR = auto()
     DEFINE_CONSTRAINT = auto()
     DEFINE_GENERATOR = auto()
@@ -178,18 +173,6 @@ class Command(AST, ABC):
     
     def __init__(self, command_kind: CommandKind):
         self.command_kind = command_kind
-
-class SetLogicCommand(Command):
-
-    def __init__(self, logic):
-        super().__init__(CommandKind.SET_LOGIC)
-        self.logic = logic
-
-    def accept(self, visitor: ASTVisitor):
-        return visitor.visit_set_logic_command(self)
-
-    def __str__(self):
-        return f"(set-logic {self.logic})"
 
 class DefineVariableCommand(Command):
 

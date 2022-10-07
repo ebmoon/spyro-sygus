@@ -7,15 +7,10 @@ class SpyroSygusParser(object):
     tokens = SpyroSygusLexer.tokens
 
     def p_program(self, p):
-        """program : set_logic_command variable_plus function_plus generator constraint_plus"""
+        """program : variable_plus function_plus generator constraint_plus"""
         
-        p[0] = Program(p[1], p[2], p[3], p[4], p[5])
+        p[0] = Program(p[1], p[2], p[3], p[4])
         self._ast_root = p[0]
-
-    def p_set_logic_command(self, p):
-        """set_logic_command : TK_LPAREN TK_SET_LOGIC TK_SYMBOL TK_RPAREN"""
-        
-        p[0] = SetLogicCommand(p[3])
 
     def p_variable_plus(self, p):
         """variable_plus : variable_plus variable
