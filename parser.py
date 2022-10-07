@@ -28,13 +28,21 @@ class SpyroSygusParser(object):
         """sort : TK_SYMBOL"""
         p[0] = SortExpression(p[1])
 
-    def p_term_star(self, p):
-        """term_star : term_plus
+    def p_sort_star(self, p):
+        """sort_star : sort_plus
                      | """
         if 2 == len(p):
             p[0] = p[1]
         else:
             p[0] = []
+
+    def p_sort_plus(self, p):
+        """sort_plus : sort_plus sort
+                     | sort"""
+        if 2 == len(p):
+            p[0] = [p[1]]
+        else:
+            p[0] = p[1] + [p[2]]    
 
     def p_term_plus(self, p):
         """term_plus : term_plus term
@@ -57,7 +65,7 @@ class SpyroSygusParser(object):
         p[0] = ConstantTerm(p[3])
 
     def p_app(self, p):
-        """app : TK_LPAREN TK_SYMBOL term_star TK_RPAREN"""
+        """app : TK_LPAREN TK_SYMBOL sort_star TK_RPAREN"""
         p[0] = FunctionApplicationTerm(p[2], p[3])
 
     def p_term(self, p):
