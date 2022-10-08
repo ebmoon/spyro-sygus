@@ -140,8 +140,8 @@ class ProductionRule(AST):
         return visitor.visit_production_rule(self)
 
     def __str__(self):
-        terms_str = " ".join([str(term) for term in self.terms])
-        return f"({self.head_symbol} {self.sort} ({terms_str}))"
+        sorts_str = " ".join([str(sort) for sort in self.sorts])
+        return f"(${self.head_symbol} {sorts_str})"
 
 class SemanticRule(AST):
 
@@ -167,7 +167,7 @@ class ProductionMatch(AST):
 
     def __str__(self):
         vars_str = " ".join(self.variables)
-        return f"({self.identifier} {vars_str})"
+        return f"(${self.identifier} {vars_str})"
 
 class Grammar(AST):
 
@@ -256,7 +256,7 @@ class Program(AST):
         return visitor.visit_program(self)
 
     def __str__(self):
-        s + "\r\n".join([str(cmd) for cmd in self.target_functions]) + "\r\n\r\n"
+        s = "\r\n".join([str(cmd) for cmd in self.target_functions]) + "\r\n\r\n"
         s += str(self.lang_syntax) + "\r\n\r\n"
         s += str(self.lang_semantics) 
 

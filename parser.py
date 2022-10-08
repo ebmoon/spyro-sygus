@@ -1,4 +1,3 @@
-from ast import match_case
 import ply.yacc
 
 from lexer import SpyroSygusLexer
@@ -10,7 +9,7 @@ class SpyroSygusParser(object):
     def p_program(self, p):
         """program : target_fun_plus declare_language declare_semantics"""
         
-        p[0] = Program(p[1], p[2], p[3], p[4])
+        p[0] = Program(p[1], p[2], p[3])
         self._ast_root = p[0]
 
     def p_target_fun_plus(self, p):
@@ -22,10 +21,8 @@ class SpyroSygusParser(object):
             p[0] = p[1] + [p[2]]        
 
     def p_target_fun(self, p):
-        """target_fun : TK_LPAREN TK_TARGET_FUN TK_SYMBOL 
-                        TK_LPAREN arg_plus TK_RPAREN 
-                        TK_LPAREN arg TK_RPAREN term TK_RPAREN"""
-        p[0] = TargetFunctionCommand(p[3], p[5], p[8], p[10])
+        """target_fun : TK_LPAREN TK_TARGET_FUN TK_SYMBOL TK_LPAREN arg_plus TK_RPAREN arg term TK_RPAREN"""
+        p[0] = TargetFunctionCommand(p[3], p[5], p[7], p[8])
 
     def p_arg_plus(self, p):
         """arg_plus : arg_plus arg
@@ -59,14 +56,6 @@ class SpyroSygusParser(object):
         """sort : TK_SYMBOL"""
         p[0] = SortExpression(p[1])
 
-    def p_term_plus(self, p):
-        """term_plus : term_plus term
-                     | term"""
-        if 2 == len(p):
-            p[0] = [p[1]]
-        else:
-            p[0] = p[1] + [p[2]] 
-
     def p_symbol(self, p):
         """symbol : TK_SYMBOL"""
         p[0] = IdentifierTerm(p[1])
@@ -76,8 +65,24 @@ class SpyroSygusParser(object):
         p[0] = NumeralTerm(p[1])
 
     def p_app(self, p):
-        """app : TK_LPAREN TK_SYMBOL sort_star TK_RPAREN"""
+        """app : TK_LPAREN TK_SYMBOL term_star TK_RPAREN"""
         p[0] = FunctionApplicationTerm(p[2], p[3])
+
+    def p_term_star(self, p):
+        """term_star : term_plus
+                     | """
+        if 2 == len(p):
+            p[0] = p[1]
+        else:
+            p[0] = []
+
+    def p_term_plus(self, p):
+        """term_plus : term_plus term
+                     | term"""
+        if 2 == len(p):
+            p[0] = [p[1]]
+        else:
+            p[0] = p[1] + [p[2]]  
 
     def p_term(self, p):
         """term : symbol
@@ -86,9 +91,7 @@ class SpyroSygusParser(object):
         p[0] = p[1]       
     
     def p_declare_language(self, p):
-        """declare_language : TK_LPAREN TK_DECLARE_LANGUAGE 
-                              TK_LPAREN nonterminal_plus TK_RPAREN 
-                              TK_LPAREN syntactic_rule_plus TK_RPAREN TK_RPAREN"""
+        """declare_language : TK_LPAREN TK_DECLARE_LANGUAGE TK_LPAREN nonterminal_plus TK_RPAREN TK_LPAREN syntactic_rule_plus TK_RPAREN TK_RPAREN"""
         p[0] = DeclareLanguageCommand(p[4], p[7])
     
     def p_nonterminal_plus(self, p):
@@ -124,8 +127,8 @@ class SpyroSygusParser(object):
             p[0] = p[1] + [p[2]]
     
     def p_production(self, p):
-        """production : TK_LPAREN TK_PRODUCTION sort_star TK_RPAREN """
-        p[0] = ProductionRule(p[2], p[3])
+        """production : TK_LPAREN TK_PRODUCTION TK_SYMBOL sort_star TK_RPAREN """
+        p[0] = ProductionRule(p[3], p[4])
 
     def p_declare_semantics(self, p):
         """declare_semantics : TK_LPAREN TK_DECLARE_SEMANTICS sem_plus TK_RPAREN"""
@@ -144,8 +147,16 @@ class SpyroSygusParser(object):
         p[0] = SemanticRule(p[2], p[3], p[4])
 
     def p_match(self, p):
-        """match : TK_LPAREN TK_PRODUCTION var_plus TK_RPAREN"""
-        p[0] = ProductionMatch(p[2], p[3])
+        """match : TK_LPAREN TK_PRODUCTION TK_SYMBOL var_star TK_RPAREN"""
+        p[0] = ProductionMatch(p[3], p[4])
+
+    def p_var_star(self, p):
+        """var_star : var_plus
+                    | """
+        if 2 == len(p):
+            p[0] = p[1]
+        else:
+            p[0] = []
 
     def p_var_plus(self, p):
         """var_plus : var_plus TK_SYMBOL
@@ -157,7 +168,7 @@ class SpyroSygusParser(object):
 
     def p_error(self, p):
         if p:
-            print("Parsing error at '%s'" % p.value)
+            print(f"Line {p.lineno}: Parsing error at '{p.value}'")
         else:
             print("Parsing error at EOF")
 

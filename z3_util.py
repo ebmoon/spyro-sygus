@@ -18,7 +18,7 @@ reserved_functions = {
     '>=': lambda x, y: x >= y,
     '=': lambda x, y: x == y,
     'distinct': lambda x, y: x != y,
-    'ite': IF,
+    'ite': If,
     '+': lambda x, y: x + y,
     '*': lambda x, y: x * y,
     '-': lambda x, y: x - y,
@@ -94,8 +94,6 @@ class BaseInitializer(ASTVisitor, ABC):
         rule_name = self.__fresh_rule_name()
         rule = self.current_head_symbol(*self.cxt_variables.values(), variable)
         self.add_rule(rule, rule_name)
-
-        self.
 
         raise NotImplementedError
         # self.current_grammar.addAnyConstant(self.current_head_symbol)

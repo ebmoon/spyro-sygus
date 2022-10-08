@@ -1,7 +1,6 @@
-import cvc5
+from z3 import *
 from spyro_ast import *
-from cvc5 import Kind
-from cvc5_util import *
+from z3_util import *
 
 class SynthesisOracleInitializer(BaseInitializer):
     

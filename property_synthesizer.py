@@ -1,6 +1,5 @@
 import os
 import time
-from cvc5_util import print_synth_solutions
 from implication import ImplicationOracle
 
 from parser import SpyroSygusParser
@@ -21,6 +20,7 @@ class PropertySynthesizer:
       
         # Template for Sketch synthesis
         self.__ast = SpyroSygusParser().parse(self.__infile.read())
+        print(self.__ast)
 
         # Iterators
         self.__outer_iterator = 0
@@ -201,7 +201,6 @@ class PropertySynthesizer:
 
             if self.__verbose:
                 print("Obtained a best L-property")
-                print_synth_solutions(self.__precision_oracle.spec, phi)
 
             self.__outer_iterator += 1
             self.__inner_iterator = 0

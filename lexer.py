@@ -19,6 +19,7 @@ class SpyroSygusLexer(object):
 
     t_TK_LPAREN = r'\('
     t_TK_RPAREN = r'\)'
+    t_TK_PRODUCTION = r'\$'
 
     _zero = r'0'
     _nonzero = r'[1-9]'
@@ -26,9 +27,6 @@ class SpyroSygusLexer(object):
     _numeral = f'(?:{_zero})|(?:{_nonzero}(?:{_digit})*)'
     _symbolcc = r'(?:[a-zA-Z_&!~<>=/%]|@|\+|-|\*|\||\?|\.|\^)'
     _symbol = f'{_symbolcc}(?:(?:{_symbolcc})|(?:{_digit}))*'
-
-    _prod_prefix = r'\$'
-    _production_symbol = f'{_prod_prefix}{_symbol}'
 
     t_ignore = ' \t\f\r'
 
@@ -48,11 +46,6 @@ class SpyroSygusLexer(object):
     @ply.lex.TOKEN(_symbol)
     def t_TK_SYMBOL(self, t):
         t.type = self.reserved.get(t.value, 'TK_SYMBOL')
-        return t
-
-    @ply.lex.TOKEN(_production_symbol)
-    def t_TK_PROUCTION(self, t):
-        t.value = t.value[1:]
         return t
 
     def __init__(self):
