@@ -57,6 +57,7 @@ class BaseInitializer(ASTVisitor, ABC):
         self.variables = []
         self.current_nonterminal = None
         self.rule_dict = {}
+        self.function_args = {}
 
         self.var_cnt = 0
 
@@ -234,6 +235,7 @@ class BaseInitializer(ASTVisitor, ABC):
         for premise, value in rules:
             self.solver.add_rule(function(*input_variables, value), And(*premise))
 
-        self.variables = input_variables + [output_variable]
+        self.variables += input_variables + [output_variable]
+        self.function_args[identifier] = input_variables + [output_variable]
 
         return function

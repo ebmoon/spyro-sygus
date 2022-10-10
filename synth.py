@@ -47,8 +47,6 @@ class SynthesisOracle(object):
         initializer = SynthesisOracleInitializer(solver, pos, neg) 
         realizable = self.ast.accept(initializer)
 
-        # print(solver.sexpr())
-
         if solver.query(realizable) == sat:
             answer = solver.get_answer().arg(1).arg(0).arg(0)
             return answer.arg(0)

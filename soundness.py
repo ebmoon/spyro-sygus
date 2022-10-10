@@ -26,7 +26,7 @@ class SoundnessOracleInitializer(BaseInitializer):
         body = []
         
         for function in functions:
-            body.append(function(*self.variables))
+            body.append(function(*self.function_args[str(function)]))
         
         body.append(start_sem(self.phi, *self.variables, False))
 
