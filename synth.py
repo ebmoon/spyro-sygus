@@ -7,32 +7,23 @@ class SynthesisOracleInitializer(BaseInitializer):
     def __init__(self, solver):
         super().__init__(solver)
 
-    def visit_define_variable_command(self, define_variable_command):
-        sort = define_variable_command.sort.accept(self)
-        term = self.solver.mkVar(sort, define_variable_command.identifier)
-      
-        self.cxt_variables[define_variable_command.identifier] = term
-
-        return term
-
     def visit_program(self, program):
         # Set logic of the solver
-        program.set_logic_command.accept(self)
-        variables = [cmd.accept(self) for cmd in program.define_variable_commands]
-        spec = program.generator.accept(self)
 
-        return (variables, spec)
+        [target_function.accept(self) for target_function in program.target_functions]
+        program.lang_syntax.accept(self)
+        program.lang_semantics.accept(self)
+
+        print(self.solver.sexpr())
+
+        return None
 
 class SynthesisOracle(object):
 
     def __init__(self, ast):
-        self.solver = cvc5.Solver()
+        self.solver = Fixedpoint()
         self.ast = ast
-        self.__initializer = SynthesisOracleInitializer(self.solver)
-
-        self.solver.setOption("sygus", "true")
-        self.solver.setOption("incremental", "true")
-        self.solver.setOption("tlimit-per", TIMEOUT)
+        self.__initializer = SynthesisOracleInitializer(self.solver) 
 
         variables, spec = ast.accept(self.__initializer)
 

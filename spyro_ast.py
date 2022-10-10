@@ -36,7 +36,7 @@ class ASTVisitor(object):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_declare_language_command(self, declare_syntax_command):
+    def visit_declare_language_command(self, declare_language_command):
         raise NotImplementedError
 
     @abstractmethod
@@ -132,16 +132,16 @@ class SyntacticRule(AST):
 
 class ProductionRule(AST):
 
-    def __init__(self, head_symbol, sorts):
+    def __init__(self, head_symbol, variables):
         self.head_symbol = head_symbol
-        self.sorts = sorts
+        self.variables = variables
 
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_production_rule(self)
 
     def __str__(self):
-        sorts_str = " ".join([str(sort) for sort in self.sorts])
-        return f"(${self.head_symbol} {sorts_str})"
+        variables_str = " ".join([str(variables) for variables in self.variables])
+        return f"(${self.head_symbol} {variables_str})"
 
 class SemanticRule(AST):
 

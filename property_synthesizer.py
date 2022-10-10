@@ -20,7 +20,6 @@ class PropertySynthesizer:
       
         # Template for Sketch synthesis
         self.__ast = SpyroSygusParser().parse(self.__infile.read())
-        print(self.__ast)
 
         # Iterators
         self.__outer_iterator = 0
