@@ -20,7 +20,7 @@
     (B ($t) true)
     (B ($or_1 apt1) apt1)
     (B ($or_2 apt1 apt2) (or apt1 apt2))
-    (B ($or_2 apt1 apt2) (or apt1 apt2 apt3))
+    (B ($or_3 apt1 apt2 apt3) (or apt1 apt2 apt3))
 
     (AP ($eq it1 it2) (= it1 it2))
     (AP ($le it1 it2) (<= it1 it2))

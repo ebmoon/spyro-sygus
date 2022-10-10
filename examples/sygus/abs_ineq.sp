@@ -1,19 +1,22 @@
-(set-logic LIA)
-
-(define-var x Int 
-    ((Start Int))
-    ((Start Int ((Constant Int)))))
-(define-var o Int 
-    ((Start Int))
-    ((Start Int ((Constant Int)))))
-
-(define-fun abs ((x Int)) Int (ite (>= x 0) x (- x)))
-
-(generator 
-    ((B Bool) (N Int))
-
-    ((B Bool ((>= o N)))
-     (N Int ((Constant Int))))
+(target-fun max2 
+    ((x Int))     ;; Input variables
+    (o Int)                 ;; Output variable
+    (ite (<= 0 x) x (- x))  ;; Function term
 )
 
-(constraint (= o (abs x)))
+(declare-language
+    
+    ;; Nonterminals
+    ((B Bool) (I Int))
+
+    ;; Syntax
+    ((($o_gt I))
+     (($n Int)))
+)
+
+;; Semantic rules
+(declare-semantics 
+    (B ($o_gt it) (>= o it))
+
+    (I ($n num) num)
+)

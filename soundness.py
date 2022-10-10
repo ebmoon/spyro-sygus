@@ -4,48 +4,56 @@ from z3_util import *
 
 class SoundnessOracleInitializer(BaseInitializer):
     
-    def __init__(self, solver):
+    def __init__(self, solver, phi):
         super().__init__(solver)
 
+        self.phi = phi
+
     def visit_program(self, program):
-        program.set_logic_command.accept(self)
-        variables = [cmd.accept(self) for cmd in program.define_variable_commands]
-        functions = [cmd.accept(self) for cmd in program.define_function_commands]
-        constraints = [cmd.accept(self) for cmd in program.define_constraint_commands]
+        # Set logic of the solver
+
+        functions = [target_function.accept(self) for target_function in program.target_functions]
+        nonterminals, sem_functions = program.lang_syntax.accept(self)
+        program.lang_semantics.accept(self)
+
+        variable_sorts = [variable.sort() for variable in self.variables]
+
+        start = nonterminals[0]
+        start_sem = sem_functions[0]
+        cex = Function("cex", *variable_sorts, BoolSort())
+
+        head = cex(*self.variables)
+        body = []
         
-        return (variables, functions, constraints)
+        for function in functions:
+            body.append(function(*self.variables))
+        
+        body.append(start_sem(self.phi, *self.variables, False))
+
+        self.solver.register_relation(cex)
+        self.solver.add_rule(head, body)
+
+        return cex, len(self.variables)
 
 class SoundnessOracle(object):
 
     def __init__(self, ast):
-        self.solver = cvc5.Solver()
         self.ast = ast
-        self.__initializer = SoundnessOracleInitializer(self.solver)
 
-        self.solver.setOption("sygus", "true")
-        self.solver.setOption("incremental", "true")
-        self.solver.setOption("sygus-grammar-cons", "any-const")
-        self.solver.setOption("tlimit-per", TIMEOUT)
-        
-        variables, functions, constraints = ast.accept(self.__initializer)
-        
-        self.variables = variables
-        self.constraints = constraints
-        self.functions = functions
+    def check_soundness(self, phi):
+        solver = Fixedpoint()
+        initializer = SoundnessOracleInitializer(solver, phi) 
+        cex, num_variables = self.ast.accept(initializer)
 
-    # Input : Candadate specification as CVC5 term
-    # Output : Counterexample as CVC5 term
-    def check_soundness(self, spec):
-        self.solver.push()
+        # print(solver.sexpr())
 
-        constraint_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
-        spec_neg = self.solver.mkTerm(Kind.NOT, constraint_spec)
-        self.solver.addSygusConstraint(spec_neg)
+        solver.query(cex)
+        if solver.query(cex) == sat:
+            answer = solver.get_answer().arg(1).arg(0).arg(0)
+            e_pos = []
+            for i in range(num_variables):
+                e_pos.append(answer.arg(i))
 
-        if self.solver.checkSynth().hasSolution():
-            soln = self.solver.getSynthSolutions(self.variables)
-            self.solver.pop()
-            return soln
+            return e_pos[::-1]
         else:
-            self.solver.pop()
             return None

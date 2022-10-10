@@ -4,114 +4,68 @@ from z3_util import *
 
 class PrecisionOracleInitializer(BaseInitializer):
     
-    def __init__(self, solver):
+    def __init__(self, solver, phi_list, phi, pos, neg):
         super().__init__(solver)
 
+        self.phi_list = phi_list
+        self.phi = phi
+        self.pos = pos
+        self.neg = neg
+
     def visit_program(self, program):
-        program.set_logic_command.accept(self)
-        variables = [cmd.accept(self) for cmd in program.define_variable_commands]
-        functions = [cmd.accept(self) for cmd in program.define_function_commands]
-        spec = program.generator.accept(self)
+        # Set logic of the solver
 
-        constraint = self.solver.mkTerm(Kind.APPLY_UF, spec, *variables)
-        constraint_neg = self.solver.mkTerm(Kind.NOT, constraint)
-        self.solver.addSygusConstraint(constraint_neg)
+        functions = [target_function.accept(self) for target_function in program.target_functions]
+        nonterminals, sem_functions = program.lang_syntax.accept(self)
+        program.lang_semantics.accept(self)
 
-        return (variables, functions, spec)
+        variable_sorts = [variable.sort() for variable in self.variables]
+
+        start = nonterminals[0]
+        start_sem = sem_functions[0]
+        witness = Const("witness", start)
+        imprecise = Function("imprecise", start, *variable_sorts, BoolSort())
+
+        head = imprecise(witness, *self.variables)
+        body = []
+        
+        body.append(start_sem(self.phi, *self.variables, True))
+        body.append(start_sem(witness, *self.variables, False))
+
+        for prev_phi in self.phi_list:
+            body.append(start_sem(prev_phi, *self.variables, True))
+
+        for e_pos in self.pos:
+            body.append(start_sem(witness, *e_pos, True))
+        
+        for e_neg in self.neg:
+            body.append(start_sem(witness, *e_neg, False))
+        
+        self.solver.declare_var(witness)
+        self.solver.register_relation(imprecise)
+        self.solver.add_rule(head, body)
+
+        return imprecise, len(self.variables)
 
 class PrecisionOracle(object):
 
     def __init__(self, ast):
-        self.solver = cvc5.Solver()
         self.ast = ast
-        self.__initializer = PrecisionOracleInitializer(self.solver)
 
-        self.solver.setOption("sygus", "true")
-        self.solver.setOption("incremental", "true")
-        self.solver.setOption("sygus-grammar-cons", "any-const")
-        self.solver.setOption("tlimit-per", TIMEOUT)
+    def check_precision(self, phi_list, phi, pos, neg):
+        solver = Fixedpoint()
+        initializer = PrecisionOracleInitializer(solver, phi_list, phi, pos, neg) 
+        imprecise, num_variables = self.ast.accept(initializer)
 
-        variables, functions, spec = ast.accept(self.__initializer)
-        self.solver.push(2)
+        if solver.query(imprecise) == sat:
+            answer = solver.get_answer().arg(1).arg(0).arg(0)
 
-        self.variables = variables
-        self.functions = functions
-        self.spec = spec
+            e_neg = []
+            for i in range(num_variables):
+                e_neg.append(answer.arg(i))
 
-        self.new_pos = []
-        self.neg_may = []
+            phi = answer.arg(num_variables)
 
-    def add_positive_example(self, e):
-        self.solver.pop()
-
-        term = self.solver.mkTerm(Kind.APPLY_UF, self.spec, *e)
-        
-        self.solver.addSygusConstraint(term)
-        self.new_pos.append(term)
-
-        self.solver.push()
-
-        for e_term in self.neg_may:
-            self.solver.addSygusConstraint(e_term)
-
-    def add_negative_example(self, e):
-        term = self.solver.mkTerm(Kind.APPLY_UF, self.spec, *e)
-        neg_term = self.solver.mkTerm(Kind.NOT, term)
-        
-        self.solver.addSygusConstraint(neg_term)
-        self.neg_may.append(neg_term)
-
-    def freeze_negative_example(self):
-        self.solver.pop()
-
-        for e_term in self.neg_may:
-            self.solver.addSygusConstraint(e_term)
-    
-        self.neg_may = []
-
-        self.solver.push()
-
-    def clear_negative_may(self):
-        self.solver.pop()     
-        
-        self.neg_may = []
-
-        self.solver.push()
-
-    def clear_negative_example(self):
-        self.solver.pop(2)
-
-        for e_term in self.new_pos:
-            self.solver.addSygusConstraint(e_term)        
-        
-        self.new_pos = []
-        self.neg_may = []
-
-        self.solver.push(2)      
-
-    def check_precision(self, phi_list, spec):
-        self.solver.push()
-
-        for phi in phi_list:
-            phi_spec = self.solver.mkTerm(Kind.APPLY_UF, phi, *self.variables)
-            self.solver.addSygusConstraint(phi_spec)
-
-        constraint_spec = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.variables)
-        self.solver.addSygusConstraint(constraint_spec)
-
-        synthResult = self.solver.checkSynth()
-        if synthResult.hasSolution():
-            const_soln = self.solver.getSynthSolutions(self.variables)
-            spec_soln = self.solver.getSynthSolution(self.spec)
-
-            self.solver.pop()
-            return (const_soln, spec_soln)
-        elif synthResult.hasNoSolution():
-            self.solver.pop()
-            return (None, None)
+            return e_neg[::-1], phi
         else:
-            self.solver.pop()
-            return (None, None)
-
-        
-
+            return None, None

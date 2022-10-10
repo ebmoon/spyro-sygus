@@ -132,9 +132,9 @@ class SyntacticRule(AST):
 
 class ProductionRule(AST):
 
-    def __init__(self, head_symbol, variables):
+    def __init__(self, head_symbol, sorts):
         self.head_symbol = head_symbol
-        self.variables = variables
+        self.sorts = sorts
 
     def accept(self, visitor: ASTVisitor):
         return visitor.visit_production_rule(self)
