@@ -1,6 +1,7 @@
 from z3 import *
 from spyro_ast import *
 from z3_util import *
+from unrealizable import *
 
 class SynthesisOracleInitializer(BaseInitializer):
     
@@ -54,14 +55,10 @@ class SynthesisUnrealizabilityChecker(BaseUnrealizabilityChecker):
 
         body = start_sem(*body_arg)
 
-        print(head, body)
-
         self.solver.register_relation(realizable)
         self.solver.add_rule(head, body)
 
         return realizable
-
-
 
 class SynthesisOracle(object):
 
@@ -74,18 +71,15 @@ class SynthesisOracle(object):
         realizable = self.ast.accept(checker)
 
         if solver.query(realizable) == sat:
-            print("realizable")
             solver = Fixedpoint()
             initializer = SynthesisOracleInitializer(solver, pos, neg) 
             realizable = self.ast.accept(initializer)
             
             if solver.query(realizable) == sat:
                 answer = solver.get_answer().arg(1).arg(0).arg(0)
-                print(answer)
                 return answer.arg(0)
             else:
                 # should not happen
                 raise NotImplementedError
         else:
-            print("unrealizable")
             return None

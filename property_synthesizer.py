@@ -168,6 +168,8 @@ class PropertySynthesizer:
 
         while True:
             phi_init = self.__synthesize(pos, [], [])
+            if self.__verbose:
+                print(phi_init)
             phi, pos, neg_must = self.__synthesize_property(phi_list, phi_init, pos, [])
 
             # Check if most precise candidates improves property. 
