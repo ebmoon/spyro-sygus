@@ -8,6 +8,7 @@ class BaseUnrealizabilityChecker(BaseInitializer, ABC):
         super().__init__(solver, pos, neg)
 
         self.num_examples = len(pos) + len(neg)
+        self.var_copies = {}
 
     def visit_sort_expression(self, sort_expression):
         if sort_expression.identifier in self.cxt_sorts:
@@ -41,6 +42,9 @@ class BaseUnrealizabilityChecker(BaseInitializer, ABC):
             for symbol in variables:
                 self.cxt_variables[symbol] = ret_variable_copies[symbol][n]
             
+            for symbol in self.var_copies:
+                self.cxt_variables[symbol] = self.var_copies[symbol][n]
+
             premise, term = semantic_rule.term.accept(self)[0]
             terms.append(term)
 
@@ -111,26 +115,31 @@ class BaseUnrealizabilityChecker(BaseInitializer, ABC):
     def visit_target_function_command(self, target_function_command):
         identifier = target_function_command.identifier
         inputs = target_function_command.inputs
-        output_id, output_sort = target_function_command.output
+        output_id, output_sort_str = target_function_command.output
         term = target_function_command.term
 
         input_sorts = []
         input_variables = []
-        input_copied_variables = []
+        copied_variables = []
         for input_id, input_sort in inputs:
             variable, sort = self.define_new_variable(input_id, input_sort)
             input_sorts.append(sort)
             input_variables.append(variable)
+            self.var_copies[input_id] = []
 
-            for i in range(self.num_examples):
-                variable, _ = self.define_new_variable(f'{input_id}_{i}', input_sort)
-                input_copied_variables.append(variable)
+        output_variable, output_sort = self.define_new_variable(output_id, output_sort_str)
+        self.var_copies[output_id] = []
 
-        output_variable, output_sort = self.define_new_variable(output_id, output_sort)
-        output_copied_variables = []
+
         for i in range(self.num_examples):
-            variable, _ = self.define_new_variable(f'{output_id}_{i}', output_sort)
-            output_copied_variables.append(variable)
+            for input_id, input_sort in inputs:
+                variable, _ = self.define_new_variable(f'{input_id}_{i}', input_sort)
+                copied_variables.append(variable)
+                self.var_copies[input_id].append(variable)
+
+            variable, _ = self.define_new_variable(f'{output_id}_{i}', output_sort_str)
+            copied_variables.append(variable)
+            self.var_copies[output_id].append(variable)
 
         function = Function(identifier, *input_sorts, output_sort, BoolSort())
         self.cxt_functions[identifier] = function
@@ -140,7 +149,7 @@ class BaseUnrealizabilityChecker(BaseInitializer, ABC):
         for premise, value in rules:
             self.solver.add_rule(function(*input_variables, value), And(*premise))
 
-        self.variables += input_copied_variables + output_copied_variables
+        self.variables += copied_variables
         self.function_args[identifier] = input_variables + [output_variable]
 
         return function

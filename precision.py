@@ -41,14 +41,10 @@ class PrecisionUnrealizabilityChecker(BaseUnrealizabilityChecker):
         for prev_phi in self.phi_list:
             body.append(self.convert_term(prev_phi))
        
-        print(head, body)
-
         self.solver.register_relation(imprecise)
         self.solver.add_rule(head, body)
 
-        print(self.solver.sexpr())
-
-        return imprecise, len(self.variables) - len(variables), len(variables)
+        return imprecise, len(variables)
 
 
 class PrecisionOracle(object):
@@ -59,13 +55,13 @@ class PrecisionOracle(object):
     def check_precision(self, phi_list, phi, pos, neg):
         solver = Fixedpoint()
         initializer = PrecisionUnrealizabilityChecker(solver, pos, neg, phi_list, phi) 
-        imprecise, start, num_variables = self.ast.accept(initializer)
+        imprecise, num_variables = self.ast.accept(initializer)
 
         if solver.query(imprecise) == sat:
             answer = solver.get_answer().arg(1).arg(0).arg(0)
             e_neg = []
             for i in range(num_variables):
-                e_neg.append(answer.arg(start + i))
+                e_neg.append(answer.arg(i))
             
             e_neg = e_neg[::-1]
 

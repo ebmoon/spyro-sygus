@@ -73,8 +73,8 @@ class SynthesisOracle(object):
         if solver.query(realizable) == sat:
             solver = Fixedpoint()
             initializer = SynthesisOracleInitializer(solver, pos, neg) 
-            realizable = self.ast.accept(initializer)
-            
+            realizable = self.ast.accept(initializer) 
+
             if solver.query(realizable) == sat:
                 answer = solver.get_answer().arg(1).arg(0).arg(0)
                 return answer.arg(0)

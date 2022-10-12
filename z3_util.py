@@ -150,8 +150,6 @@ class BaseInitializer(ASTVisitor, ABC):
         variables = production_match.variables
         sorts = self.rule_dict[head_symbol]
 
-        # self.rule_args[head_symbol] = variables
-
         body = []
         ret_variables = []
         term_variables = []
