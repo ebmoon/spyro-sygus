@@ -5,7 +5,7 @@ from z3_util import *
 class SoundnessOracleInitializer(BaseInitializer):
     
     def __init__(self, solver, phi):
-        super().__init__(solver)
+        super().__init__(solver, [], [])
 
         self.phi = phi
 

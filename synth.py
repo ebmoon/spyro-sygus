@@ -5,14 +5,9 @@ from z3_util import *
 class SynthesisOracleInitializer(BaseInitializer):
     
     def __init__(self, solver, pos, neg):
-        super().__init__(solver)
-
-        self.pos = pos
-        self.neg = neg
+        super().__init__(solver, pos, neg)
 
     def visit_program(self, program):
-        # Set logic of the solver
-
         [target_function.accept(self) for target_function in program.target_functions]
         nonterminals, sem_functions = program.lang_syntax.accept(self)
         program.lang_semantics.accept(self)
@@ -37,6 +32,37 @@ class SynthesisOracleInitializer(BaseInitializer):
 
         return realizable
 
+class SynthesisUnrealizabilityChecker(BaseUnrealizabilityChecker):
+
+    def __init__(self, solver, pos, neg):
+        super().__init__(solver, pos, neg)
+
+    def visit_program(self, program):
+        [target_function.accept(self) for target_function in program.target_functions]
+        sem_functions = program.lang_syntax.accept(self)
+        program.lang_semantics.accept(self)
+
+        start_sem = sem_functions[0]
+        realizable = Function("realizable", BoolSort())
+
+        head = realizable()
+        
+        body_arg = [item for e_pos in self.pos for item in e_pos]
+        body_arg += [item for e_neg in self.neg for item in e_neg]
+        body_arg += [True] * len(self.pos)
+        body_arg += [False] * len(self.neg)
+
+        body = start_sem(*body_arg)
+
+        print(head, body)
+
+        self.solver.register_relation(realizable)
+        self.solver.add_rule(head, body)
+
+        return realizable
+
+
+
 class SynthesisOracle(object):
 
     def __init__(self, ast):
@@ -44,11 +70,22 @@ class SynthesisOracle(object):
 
     def synthesize(self, pos, neg):
         solver = Fixedpoint()
-        initializer = SynthesisOracleInitializer(solver, pos, neg) 
-        realizable = self.ast.accept(initializer)
+        checker = SynthesisUnrealizabilityChecker(solver, pos, neg)
+        realizable = self.ast.accept(checker)
 
         if solver.query(realizable) == sat:
-            answer = solver.get_answer().arg(1).arg(0).arg(0)
-            return answer.arg(0)
+            print("realizable")
+            solver = Fixedpoint()
+            initializer = SynthesisOracleInitializer(solver, pos, neg) 
+            realizable = self.ast.accept(initializer)
+            
+            if solver.query(realizable) == sat:
+                answer = solver.get_answer().arg(1).arg(0).arg(0)
+                print(answer)
+                return answer.arg(0)
+            else:
+                # should not happen
+                raise NotImplementedError
         else:
+            print("unrealizable")
             return None

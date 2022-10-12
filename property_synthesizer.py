@@ -8,7 +8,6 @@ from soundness import SoundnessOracle
 from precision import PrecisionOracle
 from implication import ImplicationOracle
 from util import *
-import cvc5
 
 
 class PropertySynthesizer:

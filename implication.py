@@ -5,7 +5,7 @@ from z3_util import *
 class ImplicationOracleInitializer(BaseInitializer):
     
     def __init__(self, solver, phi_list, phi):
-        super().__init__(solver)
+        super().__init__(solver, [], [])
 
         self.phi_list = phi_list
         self.phi = phi
