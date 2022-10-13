@@ -2,36 +2,8 @@ from z3 import *
 from spyro_ast import *
 from z3_util import *
 from unrealizable import *
-
-class SynthesisOracleInitializer(BaseInitializer):
-    
-    def __init__(self, solver, pos, neg):
-        super().__init__(solver, pos, neg)
-
-    def visit_program(self, program):
-        [target_function.accept(self) for target_function in program.target_functions]
-        nonterminals, sem_functions = program.lang_syntax.accept(self)
-        program.lang_semantics.accept(self)
-
-        start = nonterminals[0]
-        start_sem = sem_functions[0]
-        witness = Const("witness", start)
-        realizable = Function("realizable", start, BoolSort())
-
-        head = realizable(witness)
-        body = []
-        
-        for e_pos in self.pos:
-            body.append(start_sem(witness, *e_pos, True))
-        
-        for e_neg in self.neg:
-            body.append(start_sem(witness, *e_neg, False))
-
-        self.solver.declare_var(witness)
-        self.solver.register_relation(realizable)
-        self.solver.add_rule(head, body)
-
-        return realizable
+from cvc5_util import *
+import cvc5
 
 class SynthesisUnrealizabilityChecker(BaseUnrealizabilityChecker):
 
@@ -63,7 +35,73 @@ class SynthesisUnrealizabilityChecker(BaseUnrealizabilityChecker):
 class SynthesisOracle(object):
 
     def __init__(self, ast):
+        self.synthesizer = cvc5.Solver()
         self.ast = ast
+
+        self.synthesizer.setOption("sygus", "true")
+        self.synthesizer.setOption("incremental", "true")
+
+        initializer = SynthesisOracleInitializer(self.synthesizer)
+        self.spec = ast.accept(initializer)
+
+        self.solver.push(2)
+
+        self.new_pos = []
+        self.neg_may = []
+
+    def add_positive_example(self, e):
+        self.solver.pop()
+
+        term = self.solver.mkTerm(Kind.APPLY_UF, self.spec, *e)
+        
+        self.solver.addSygusConstraint(term)
+        self.new_pos.append(term)
+
+        self.solver.push()
+
+        for e_term in self.neg_may:
+            self.solver.addSygusConstraint(e_term)
+
+    def add_negative_example(self, e):
+        term = self.solver.mkTerm(Kind.APPLY_UF, self.spec, *e)
+        neg_term = self.solver.mkTerm(Kind.NOT, term)
+        
+        self.solver.addSygusConstraint(neg_term)
+        self.neg_may.append(neg_term)
+
+    def freeze_negative_example(self):
+        self.solver.pop()
+
+        for e_term in self.neg_may:
+            self.solver.addSygusConstraint(e_term)
+        
+        self.neg_may = []
+
+        self.solver.push()
+
+    def clear_negative_may(self):
+        self.solver.pop()     
+        
+        self.neg_may = []
+
+        self.solver.push()
+
+    def clear_negative_example(self):
+        self.solver.pop(2)
+
+        for e_term in self.new_pos:
+            self.solver.addSygusConstraint(e_term)
+        
+        self.new_pos = []
+        self.neg_may = []
+
+        self.solver.push(2)
+
+    def synthesize(self):
+        if self.solver.checkSynth().hasSolution():
+            return self.solver.getSynthSolution(self.spec)
+        else:
+            return None
 
     def synthesize(self, pos, neg):
         solver = Fixedpoint()
@@ -71,6 +109,8 @@ class SynthesisOracle(object):
         realizable = self.ast.accept(checker)
 
         if solver.query(realizable) == sat:
+            print("realizable, try synthesis")
+
             solver = Fixedpoint()
             initializer = SynthesisOracleInitializer(solver, pos, neg) 
             realizable = self.ast.accept(initializer) 

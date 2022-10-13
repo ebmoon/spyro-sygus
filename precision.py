@@ -65,6 +65,9 @@ class PrecisionOracle(object):
             
             e_neg = e_neg[::-1]
 
+            print("imprecise, try synthesis")
+            print(solver.get_answer())
+
             solver = Fixedpoint()
             initializer = SynthesisOracleInitializer(solver, pos, neg + [e_neg]) 
             realizable = self.ast.accept(initializer)

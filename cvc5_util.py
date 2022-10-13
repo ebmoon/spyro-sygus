@@ -31,13 +31,12 @@ kind_dict = defaultdict(lambda: Kind.APPLY_UF)
 for k, v in reserved_functions.items():
     kind_dict[k] = v
 
-class Synthesizer(ASTVisitor, ABC):
+class SynthesisOracleInitializer(ASTVisitor, ABC):
     
     def __init__(self, solver):
         self.solver = solver
         self.cxt_variables = {}
         self.cxt_functions = {}
-        self.cxt_nonterminals = {}
 
         self.rule_dict = {}
 
@@ -72,7 +71,8 @@ class Synthesizer(ASTVisitor, ABC):
             return self.solver.mkTerm(kind, self.cxt_functions[function_application_term.identifier], *arg_terms)
 
     def visit_syntactic_rule(self, syntactic_rule):
-        return [prod.accept(self) for prod in syntactic_rule.productions]
+        for prod in syntactic_rule.productions:
+            prod.accept(self) 
 
     def visit_production_rule(self, production_rule):
         head_symbol = production_rule.head_symbol
@@ -80,16 +80,14 @@ class Synthesizer(ASTVisitor, ABC):
 
         self.rule_dict[head_symbol] = sorts
 
-        return head_symbol
-
     def visit_semantic_rule(self, semantic_rule):
         symbol = semantic_rule.nonterminal
-        rule = self.cxt_nonterminals[symbol]
 
         current_cxt = self.cxt_variables.copy()
         self.cxt_variables = semantic_rule.match.accept(self)
 
         term = semantic_rule.term.accept(self)
+        self.grammar.add_rule(self.cxt_variables[symbol], term)
 
         self.cxt_variables = current_cxt
 
@@ -119,9 +117,8 @@ class Synthesizer(ASTVisitor, ABC):
             nonterminal_var = self.solver.mkVar(sort, symbol)
             self.cxt_variables[symbol] = nonterminal_var
             nonterminal_vars.append(nonterminal_var)
-
-            rule = syntactic_rule.accept(self)
-            self.cxt_nonterminals[symbol] = rule
+            
+            syntactic_rule.accept(self)
 
         self.grammar = self.solver.mkGrammar(fun_variables, nonterminal_vars)
 
@@ -136,6 +133,23 @@ class Synthesizer(ASTVisitor, ABC):
         for identifier, sort in inputs:
             arg_var = self.solver.mkVar(sort.accept(self), identifier)
             self.cxt_variables[identifier] = arg_var
+
+        out_var = self.solver.mkVar(output_sort.accept(self), output_id)
+        self.cxt_variables[output_id] = out_var
+
+    def visit_program(self, program):
+        for target_function in program.target_functions:
+            target_function.accept(self)
+
+        args = self.cxt_variables.values()
+        bool_sort = self.solver.getBooleanSort()
+        
+        target_function.lang_syntax.accept(self)
+        target_function.lang_semantics.accept(self)
+
+        spec = self.solver.synthFun("spec", args, bool_sort, self.grammar)
+
+        return spec
 
 def define_fun_to_string(f, params, body):
     sort = f.getSort()
