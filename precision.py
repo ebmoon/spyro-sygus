@@ -62,22 +62,7 @@ class PrecisionOracle(object):
             e_neg = []
             for i in range(num_variables):
                 e_neg.append(answer.arg(i))
-            
-            e_neg = e_neg[::-1]
 
-            print("imprecise, try synthesis")
-            print(solver.get_answer())
-
-            solver = Fixedpoint()
-            initializer = SynthesisOracleInitializer(solver, pos, neg + [e_neg]) 
-            realizable = self.ast.accept(initializer)
-            
-            if solver.query(realizable) == sat:
-                answer = solver.get_answer().arg(1).arg(0).arg(0)
-                phi = answer.arg(0)
-                return e_neg, phi
-            else:
-                # should not happen
-                raise NotImplementedError
+            return e_neg[::-1]
         else:
-            return None, None
+            return None

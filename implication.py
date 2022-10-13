@@ -1,8 +1,9 @@
+from unrealizable import BaseUnrealizabilityChecker
 from z3 import *
 from spyro_ast import *
 from z3_util import *
 
-class ImplicationOracleInitializer(BaseInitializer):
+class ImplicationOracleInitializer(BaseUnrealizabilityChecker):
     
     def __init__(self, solver, phi_list, phi):
         super().__init__(solver, [], [])
@@ -14,12 +15,11 @@ class ImplicationOracleInitializer(BaseInitializer):
         # Set logic of the solver
 
         functions = [target_function.accept(self) for target_function in program.target_functions]
-        nonterminals, sem_functions = program.lang_syntax.accept(self)
+        sem_functions = program.lang_syntax.accept(self)
         program.lang_semantics.accept(self)
 
         variable_sorts = [variable.sort() for variable in self.variables]
 
-        start = nonterminals[0]
         start_sem = sem_functions[0]
         cex = Function("cex", *variable_sorts, BoolSort())
 
@@ -27,9 +27,8 @@ class ImplicationOracleInitializer(BaseInitializer):
         body = []
         
         for prev_phi in self.phi_list:
-            body.append(start_sem(prev_phi, *self.variables, True))
-        
-        body.append(start_sem(self.phi, *self.variables, False))
+            body.append(self.convert_term(prev_phi))
+        body.append(Not(self.convert_term(self.phi)))
 
         self.solver.register_relation(cex)
         self.solver.add_rule(head, body)

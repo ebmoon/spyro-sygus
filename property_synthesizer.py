@@ -71,6 +71,7 @@ class PropertySynthesizer:
 
         # Return the result
         if e_pos != None:
+            self.__synthesis_oracle.add_positive_example(e_pos)
             return (e_pos, False)
         else:
             return (None, elapsed_time >= self.__timeout)
@@ -82,7 +83,7 @@ class PropertySynthesizer:
 
         # Run CVC5
         start_time = time.time()
-        e_neg, phi = self.__precision_oracle.check_precision(phi_list, phi, pos, neg_must + neg_may)
+        e_neg = self.__precision_oracle.check_precision(phi_list, phi, pos, neg_must + neg_may)
         end_time = time.time()
 
         # Update statistics
@@ -90,10 +91,11 @@ class PropertySynthesizer:
 
         # Return the result
         if e_neg != None:
-            return (e_neg, phi)
+            self.__synthesis_oracle.add_negative_example(e_neg)
+            return e_neg
         else:
             self.__time_last_query = elapsed_time
-            return (None, None)
+            return None
 
     def __check_improves_predicate(self, phi_list, phi):
         if self.__verbose:
@@ -133,6 +135,7 @@ class PropertySynthesizer:
                 if phi == None and len(neg_may) == 1 and phi_last_sound != None:
                     phi = phi_last_sound
                     neg_may = []
+                    self.__synthesis_oracle.clear_negative_may()
 
                 # MaxSynth is not implemented currently, and this should not be happened
                 elif phi == None:
@@ -152,13 +155,15 @@ class PropertySynthesizer:
                 # then phi_e doesn't rejects examples in neg_may. 
                 neg_must += neg_may
                 neg_may = []
+                self.__synthesis_oracle.freeze_negative_example()
 
-                e_neg, phi = self.__check_precision(phi_list, phi_e, pos, neg_must, neg_may)
+                e_neg = self.__check_precision(phi_list, phi_e, pos, neg_must, neg_may)
                 if self.__verbose:
-                    print(e_neg, phi)
-                if e_neg != None and phi != None:   # Not precise
-                    phi_e = phi
+                    print(e_neg)
+                if e_neg != None:   # Not precise
+                    phi_e = self.__synthesize(pos, neg_must, neg_may + [e_neg])
                     neg_may.append(e_neg)
+                    print(phi_e)
                 else:                               # Sound and Precise
                     return (phi_e, pos, neg_must)
 
@@ -185,6 +190,8 @@ class PropertySynthesizer:
             phi, pos, _ = self.__synthesize_property([], phi, pos, neg_must)
      
             phi_list.append(phi)
+
+            self.__synthesis_oracle.clear_negative_example()
 
             if self.__verbose:
                 print("Obtained a best L-property")

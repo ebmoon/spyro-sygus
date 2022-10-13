@@ -1,8 +1,9 @@
+from unrealizable import BaseUnrealizabilityChecker
 from z3 import *
 from spyro_ast import *
 from z3_util import *
 
-class SoundnessOracleInitializer(BaseInitializer):
+class SoundnessOracleInitializer(BaseUnrealizabilityChecker):
     
     def __init__(self, solver, phi):
         super().__init__(solver, [], [])
@@ -13,27 +14,27 @@ class SoundnessOracleInitializer(BaseInitializer):
         # Set logic of the solver
 
         functions = [target_function.accept(self) for target_function in program.target_functions]
-        nonterminals, sem_functions = program.lang_syntax.accept(self)
+        sem_functions = program.lang_syntax.accept(self)
         program.lang_semantics.accept(self)
 
-        variable_sorts = [variable.sort() for variable in self.variables]
+        variables = [variable for _, var_list in self.function_args.items() for variable in var_list]
+        variable_sorts = [variable.sort() for variable in variables]
 
-        start = nonterminals[0]
         start_sem = sem_functions[0]
         cex = Function("cex", *variable_sorts, BoolSort())
 
-        head = cex(*self.variables)
+        head = cex(*variables)
         body = []
         
         for function in functions:
             body.append(function(*self.function_args[str(function)]))
         
-        body.append(start_sem(self.phi, *self.variables, False))
+        body.append(Not(self.convert_term(self.phi)))
 
         self.solver.register_relation(cex)
         self.solver.add_rule(head, body)
 
-        return cex, len(self.variables)
+        return cex, len(variables)
 
 class SoundnessOracle(object):
 
@@ -44,8 +45,6 @@ class SoundnessOracle(object):
         solver = Fixedpoint()
         initializer = SoundnessOracleInitializer(solver, phi) 
         cex, num_variables = self.ast.accept(initializer)
-
-        # print(solver.sexpr())
 
         solver.query(cex)
         if solver.query(cex) == sat:

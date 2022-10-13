@@ -1,14 +1,57 @@
 from z3 import *
 from abc import ABC
 from z3_util import *
+import cvc5
+from cvc5 import Kind
 
-class BaseUnrealizabilityChecker(BaseInitializer, ABC):
+class BaseUnrealizabilityChecker(ASTVisitor, ABC):
     
     def __init__(self, solver, pos, neg):
-        super().__init__(solver, pos, neg)
+        self.solver = solver
+        self.pos = pos
+        self.neg = neg
+
+        self.cxt_sorts = reserved_sorts.copy()
+        self.cxt_nonterminals = {}
+        self.cxt_variables = {}
+        self.cxt_functions = {}
+        
+        self.variables = []
+        self.current_nonterminal = None
+        self.rule_dict = {}
+        self.rule_args = {}
+        self.rule_term = {}
+        self.function_args = {}
 
         self.num_examples = len(pos) + len(neg)
         self.var_copies = {}
+
+    def visit_identifier_term(self, identifier_term):
+        if identifier_term.identifier in reserved_ids:
+            return [([], reserved_ids[identifier_term.identifier])]
+        else:
+            return [([], self.cxt_variables[identifier_term.identifier])]
+
+    def visit_numeral_term(self, numeral_term):
+        return [([], numeral_term.value)]
+
+    def visit_function_application_term(self, function_application_term):
+        arg_terms = [arg.accept(self) for arg in function_application_term.args]
+        if function_application_term.identifier == ITE and len(arg_terms) == 3:
+            branch_condition = arg_terms[0][0][1]
+            true_branch = [(premise + [branch_condition], val) for premise, val in arg_terms[1]]
+            false_branch = [(premise + [Not(branch_condition)], val) for premise, val in arg_terms[2]]
+            return true_branch + false_branch
+        elif function_application_term.identifier == MINUS and len(arg_terms) == 1:
+            return [(premise, -val) for premise, val in arg_terms[0]]
+        elif function_application_term.identifier in reserved_functions:
+            args_join = foldl(join, [([], [])], arg_terms)
+            fn = reserved_functions[function_application_term.identifier]
+            return [(premise, fn(*args)) for premise, args in args_join]
+        else:
+            args_join = foldl(join, [([], [])], arg_terms)
+            fn = self.cxt_functions[function_application_term.identifier]
+            return [(premise, fn(*args)) for premise, args in args_join]
 
     def visit_sort_expression(self, sort_expression):
         if sort_expression.identifier in self.cxt_sorts:
@@ -154,18 +197,72 @@ class BaseUnrealizabilityChecker(BaseInitializer, ABC):
 
         return function
 
+    def define_new_variable(self, identifier, sort):
+        if identifier not in self.cxt_variables:
+            if type(sort) == SortExpression:
+                sort = sort.accept(self)
+            variable = Const(identifier, sort)
+            self.cxt_variables[identifier] = variable
+            self.solver.declare_var(variable)
+            return (variable, sort)
+        else:
+            variable = self.cxt_variables[identifier]
+            return (variable, variable.sort())
+
     def convert_term(self, term):
-        match_symbol = str(term.decl())
-        args = self.rule_args[match_symbol]
-        semantic_term = self.rule_term[match_symbol]
-
-        current_cxt = self.cxt_variables.copy()
-
-        for i, symbol in enumerate(args):
-            self.cxt_variables[symbol] = self.convert_term(term.arg(i))
-
-        converted = semantic_term.accept(self)[0][1]
-
-        self.cxt_variables = current_cxt
-
-        return converted
+        if term.getKind() == Kind.LAMBDA:
+            return self.convert_term(term[1])
+        elif term.getKind() == Kind.LT:
+            t1 = self.convert_term(term[0])
+            t2 = self.convert_term(term[1])
+            return t1 < t2
+        elif term.getKind() == Kind.LEQ:
+            t1 = self.convert_term(term[0])
+            t2 = self.convert_term(term[1])
+            return t1 <= t2
+        elif term.getKind() == Kind.GT:
+            t1 = self.convert_term(term[0])
+            t2 = self.convert_term(term[1])
+            return t1 > t2
+        elif term.getKind() == Kind.GEQ:
+            t1 = self.convert_term(term[0])
+            t2 = self.convert_term(term[1])
+            return t1 >= t2
+        elif term.getKind() == Kind.EQUAL:
+            t1 = self.convert_term(term[0])
+            t2 = self.convert_term(term[1])
+            return t1 == t2
+        elif term.getKind() == Kind.DISTINCT:
+            t1 = self.convert_term(term[0])
+            t2 = self.convert_term(term[1])
+            return t1 != t2
+        elif term.getKind() == Kind.ADD:
+            t1 = self.convert_term(term[0])
+            t2 = self.convert_term(term[1])
+            return t1 + t2
+        elif term.getKind() == Kind.MULT:
+            t1 = self.convert_term(term[0])
+            t2 = self.convert_term(term[1])
+            return t1 * t2
+        elif term.getKind() == Kind.SUB:
+            t1 = self.convert_term(term[0])
+            t2 = self.convert_term(term[1])
+            return t1 - t2
+        elif term.getKind() == Kind.NOT:
+            t1 = self.convert_term(term[0])
+            return Not(t1)
+        elif term.getKind() == Kind.OR:
+            args = [self.convert_term(term[i]) for i in range(term.getNumChildren())]
+            return Or(*args)
+        elif term.getKind() == Kind.AND:
+            args = [self.convert_term(term[i]) for i in range(term.getNumChildren())]
+            return And(*args)
+        elif term.getKind() == Kind.CONST_BOOLEAN:
+            return term.getBooleanValue()
+        elif term.getKind() == Kind.CONST_INTEGER:
+            return term.getIntegerValue()
+        elif term.getKind() == Kind.VARIABLE:
+            return self.cxt_variables[term.getSymbol()]
+        else:
+            print(term, term.getKind())
+            raise NotImplementedError
