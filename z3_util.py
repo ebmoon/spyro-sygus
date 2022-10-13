@@ -131,9 +131,7 @@ class BaseInitializer(ASTVisitor, ABC):
         for i, term_variable in enumerate(term_variables):
             self.cxt_variables[str(term_variable)] = ret_variables[i]
 
-        # self.rule_term[match_symbol] = semantic_rule.term        
         premise, term = semantic_rule.term.accept(self)[0]
-        
         self.cxt_variables = current_cxt_variables
 
         constructor = getattr(nonterminal, match_symbol)
