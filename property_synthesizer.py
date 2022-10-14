@@ -170,6 +170,7 @@ class PropertySynthesizer:
                 e_neg = self.__check_precision(phi_list, phi_e, pos, neg_must, neg_may)
                 if e_neg != None:   # Not precise
                     neg_may.append(e_neg)
+                    phi_e = self.__synthesize(pos, neg_must, neg_may, False)
                 else:                               # Sound and Precise
                     return (phi_e, pos, neg_must)
 
