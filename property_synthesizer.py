@@ -37,14 +37,14 @@ class PropertySynthesizer:
     def __write_output(self, output):
         self.__outfile.write(output)     
 
-    def __synthesize(self, pos, neg_must, neg_may):
+    def __synthesize(self, pos, neg_must, neg_may, check_realizable = True):
         if self.__verbose:
             print(f'Iteration {self.__outer_iterator} - {self.__inner_iterator}: Try synthesis') 
             self.__inner_iterator += 1
 
         # Run CVC5
         start_time = time.time()
-        phi = self.__synthesis_oracle.synthesize(pos, neg_must + neg_may)
+        phi = self.__synthesis_oracle.synthesize(pos, neg_must + neg_may, check_realizable)
         end_time = time.time()
         
         # Update statistics
@@ -135,6 +135,7 @@ class PropertySynthesizer:
                 if phi == None and len(neg_may) == 1 and phi_last_sound != None:
                     phi = phi_last_sound
                     neg_may = []
+                    
                     self.__synthesis_oracle.clear_negative_may()
 
                 # MaxSynth is not implemented currently, and this should not be happened
@@ -155,14 +156,15 @@ class PropertySynthesizer:
                 # then phi_e doesn't rejects examples in neg_may. 
                 neg_must += neg_may
                 neg_may = []
+                
                 self.__synthesis_oracle.freeze_negative_example()
 
                 e_neg = self.__check_precision(phi_list, phi_e, pos, neg_must, neg_may)
                 if self.__verbose:
                     print(e_neg)
                 if e_neg != None:   # Not precise
-                    phi_e = self.__synthesize(pos, neg_must, neg_may + [e_neg])
                     neg_may.append(e_neg)
+                    phi_e = self.__synthesize(pos, neg_must, neg_may, False)
                     print(phi_e)
                 else:                               # Sound and Precise
                     return (phi_e, pos, neg_must)

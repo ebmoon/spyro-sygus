@@ -226,10 +226,13 @@ class SynthesisOracle(object):
             realizable = self.ast.accept(checker)
 
         if not check_realizable or solver.query(realizable) == sat:
-            if self.synthesizer.checkSynth().hasSolution():
+            synthResult = self.synthesizer.checkSynth()
+            if synthResult.hasSolution():
                 return self.synthesizer.getSynthSolution(self.spec)
             else:
                 # should not happen
+                print(pos, neg)
+                print(f"Unknown: {synthResult.isUnknown()}")
                 raise NotImplementedError
         else:
             return None
