@@ -16,7 +16,6 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
         self.cxt_variables = {}
         self.cxt_functions = {}
         
-        self.variables = []
         self.current_nonterminal = None
         self.rule_dict = {}
         self.rule_args = {}
@@ -25,6 +24,9 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
 
         self.num_examples = len(pos) + len(neg)
         self.var_copies = {}
+
+        self.function_variables_save = None
+        self.copied_function_variables_save = None
 
     def visit_identifier_term(self, identifier_term):
         if identifier_term.identifier in reserved_ids:
@@ -93,7 +95,8 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
 
             self.cxt_variables = current_cxt_variables
 
-        head = sem_function(*self.variables, *terms)
+
+        head = sem_function(*self.copied_function_variables(), *terms)
 
         if len(body) > 0:
             self.solver.add_rule(head, body)
@@ -126,7 +129,7 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
             ret_variables = ret_variable_copies[symbol]
             if str(term_sort) in self.cxt_nonterminals:
                 ret_sort, sem_function = self.cxt_nonterminals[str(term_sort)]
-                body.append(sem_function(*self.variables, *ret_variables))
+                body.append(sem_function(*self.copied_function_variables(), *ret_variables))
 
         return (head_symbol, body, variables, ret_variable_copies)
 
@@ -137,7 +140,7 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
         for syntactic_rule in syntactic_rules:
             syntactic_rule.accept(self)
 
-        var_sorts = [variable.sort() for variable in self.variables]
+        var_sorts = [variable.sort() for variable in self.copied_function_variables()]
         sem_functions = []
         for symbol, sort in nonterminals:
             sort = sort.accept(self)
@@ -192,10 +195,32 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
         for premise, value in rules:
             self.solver.add_rule(function(*input_variables, value), And(*premise))
 
-        self.variables += copied_variables
         self.function_args[identifier] = input_variables + [output_variable]
 
         return function
+
+    def function_variables(self):
+        if self.function_variables_save != None:
+            return self.function_variables_save
+        else:
+            self.function_variables_save = [
+                variable for _, var_list in self.function_args.items() 
+                         for variable in var_list]
+            return self.function_variables_save
+
+    def copied_function_variables(self):
+        if self.copied_function_variables_save != None:
+            return self.copied_function_variables_save
+        else:
+            fun_variables = self.function_variables()
+            copied_variables = []
+            for i in range(self.num_examples):
+                for v in fun_variables:
+                    symbol = v.decl().name()
+                    copied_variables.append(self.var_copies[symbol][i])
+            
+            self.copied_function_variables_save = copied_variables
+            return self.copied_function_variables_save
 
     def define_new_variable(self, identifier, sort):
         if identifier not in self.cxt_variables:
