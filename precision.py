@@ -19,7 +19,7 @@ class PrecisionUnrealizabilityChecker(BaseUnrealizabilityChecker):
         sem_functions = program.lang_syntax.accept(self)
         program.lang_semantics.accept(self)
 
-        variables = [variable for _, var_list in self.function_args.items() for variable in var_list]
+        variables = self.function_variables()
         variable_sorts = [variable.sort() for variable in variables]
 
         start_sem = sem_functions[0]
@@ -57,7 +57,8 @@ class PrecisionOracle(object):
         initializer = PrecisionUnrealizabilityChecker(solver, pos, neg, phi_list, phi) 
         imprecise, num_variables = self.ast.accept(initializer)
 
-        if solver.query(imprecise) == sat:
+        query_result = solver.query(imprecise)
+        if query_result == sat:
             answer = solver.get_answer().arg(1).arg(0).arg(0)
             e_neg = []
             for i in range(num_variables):

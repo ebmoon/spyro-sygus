@@ -18,12 +18,12 @@ class ImplicationOracleInitializer(BaseUnrealizabilityChecker):
         sem_functions = program.lang_syntax.accept(self)
         program.lang_semantics.accept(self)
 
-        variable_sorts = [variable.sort() for variable in self.variables]
+        variables = self.function_variables()
+        variable_sorts = [variable.sort() for variable in variables]
 
-        start_sem = sem_functions[0]
         cex = Function("cex", *variable_sorts, BoolSort())
 
-        head = cex(*self.variables)
+        head = cex(*variables)
         body = []
         
         for prev_phi in self.phi_list:
@@ -33,7 +33,7 @@ class ImplicationOracleInitializer(BaseUnrealizabilityChecker):
         self.solver.register_relation(cex)
         self.solver.add_rule(head, body)
 
-        return cex, len(self.variables)
+        return cex, len(variables)
 
 class ImplicationOracle(object):
 
