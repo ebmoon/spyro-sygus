@@ -187,13 +187,13 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
             copied_variables.append(variable)
             self.var_copies[output_id].append(variable)
 
-        function = Function(identifier, *input_sorts, output_sort, BoolSort())
+        function = Function(identifier, *input_sorts, output_sort, BoolSort(), BoolSort())
         self.cxt_functions[identifier] = function
         self.solver.register_relation(function)
 
         rules = term.accept(self)
         for premise, value in rules:
-            self.solver.add_rule(function(*input_variables, value), And(*premise))
+            self.solver.add_rule(function(*input_variables, output_variable, output_variable == value), And(*premise))
 
         self.function_args[identifier] = input_variables + [output_variable]
 

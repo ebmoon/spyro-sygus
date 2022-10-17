@@ -23,8 +23,27 @@ class PrecisionUnrealizabilityChecker(BaseUnrealizabilityChecker):
         variable_sorts = [variable.sort() for variable in variables]
 
         start_sem = sem_functions[0]
+        positive = Function("positive", *variable_sorts, BoolSort(), BoolSort())
         imprecise = Function("imprecise", *variable_sorts, BoolSort())
 
+        self.solver.register_relation(positive)
+        self.solver.register_relation(imprecise)
+
+        # rule for phi_Sigma (e-)
+        body = []
+        ret_variables = []
+        for function in functions:
+            func_sem_bool = Bool(str(function) + '_ret')
+            
+            self.solver.declare_var(func_sem_bool)
+            ret_variables.append(func_sem_bool)
+
+            body.append(function(*self.function_args[str(function)], func_sem_bool))
+        head = positive(*variables, And(*ret_variables))
+    
+        self.solver.add_rule(head, body)
+
+        # 
         head = imprecise(*variables)
         body = []
 
@@ -37,11 +56,11 @@ class PrecisionUnrealizabilityChecker(BaseUnrealizabilityChecker):
 
         body.append(self.convert_term(self.phi))
         body.append(start_sem(*body_arg))
+        body.append(positive(*variables, False))
 
         for prev_phi in self.phi_list:
             body.append(self.convert_term(prev_phi))
        
-        self.solver.register_relation(imprecise)
         self.solver.add_rule(head, body)
 
         return imprecise, len(variables)

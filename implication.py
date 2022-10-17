@@ -45,7 +45,6 @@ class ImplicationOracle(object):
         initializer = ImplicationOracleInitializer(solver, phi_list, phi) 
         cex, num_variables = self.ast.accept(initializer)
 
-        solver.query(cex)
         if solver.query(cex) == sat:
             answer = solver.get_answer().arg(1).arg(0).arg(0)
             e_neg = []

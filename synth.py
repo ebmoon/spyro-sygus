@@ -131,6 +131,41 @@ class SynthesisUnrealizabilityChecker(BaseUnrealizabilityChecker):
     def __init__(self, solver, pos, neg):
         super().__init__(solver, pos, neg)
 
+    def visit_target_function_command(self, target_function_command):
+        identifier = target_function_command.identifier
+        inputs = target_function_command.inputs
+        output_id, output_sort_str = target_function_command.output
+        term = target_function_command.term
+
+        input_sorts = []
+        input_variables = []
+        copied_variables = []
+        for input_id, input_sort in inputs:
+            variable, sort = self.define_new_variable(input_id, input_sort)
+            input_sorts.append(sort)
+            input_variables.append(variable)
+            self.var_copies[input_id] = []
+
+        output_variable, output_sort = self.define_new_variable(output_id, output_sort_str)
+        self.var_copies[output_id] = []
+
+
+        for i in range(self.num_examples):
+            for input_id, input_sort in inputs:
+                variable, _ = self.define_new_variable(f'{input_id}_{i}', input_sort)
+                copied_variables.append(variable)
+                self.var_copies[input_id].append(variable)
+
+            variable, _ = self.define_new_variable(f'{output_id}_{i}', output_sort_str)
+            copied_variables.append(variable)
+            self.var_copies[output_id].append(variable)
+
+        function = Function(identifier, *input_sorts, output_sort, BoolSort(), BoolSort())
+        self.cxt_functions[identifier] = function
+        self.function_args[identifier] = input_variables + [output_variable]
+
+        return function
+
     def visit_program(self, program):
         [target_function.accept(self) for target_function in program.target_functions]
         sem_functions = program.lang_syntax.accept(self)
@@ -161,6 +196,7 @@ class SynthesisOracle(object):
 
         self.synthesizer.setOption("sygus", "true")
         self.synthesizer.setOption("incremental", "true")
+        self.synthesizer.setLogic("LIA")
 
         initializer = SynthesisOracleInitializer(self.synthesizer)
         self.spec = ast.accept(initializer)

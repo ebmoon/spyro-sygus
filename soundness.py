@@ -17,17 +17,16 @@ class SoundnessOracleInitializer(BaseUnrealizabilityChecker):
         sem_functions = program.lang_syntax.accept(self)
         program.lang_semantics.accept(self)
 
-        variables = [variable for _, var_list in self.function_args.items() for variable in var_list]
+        variables = self.function_variables()
         variable_sorts = [variable.sort() for variable in variables]
 
-        start_sem = sem_functions[0]
         cex = Function("cex", *variable_sorts, BoolSort())
 
         head = cex(*variables)
         body = []
         
         for function in functions:
-            body.append(function(*self.function_args[str(function)]))
+            body.append(function(*self.function_args[str(function)], True))
         
         body.append(Not(self.convert_term(self.phi)))
 

@@ -1,5 +1,3 @@
-(set-logic LIA)
-
 (target-fun diff1
     ((x1 Int) (y1 Int)) 
     (o1 Int) 
@@ -14,12 +12,13 @@
 (declare-language
     
     ;; Nonterminals
-    ((B Bool) (AP Bool) (I Int))
+    ((B Bool) (AP Bool) (I1 Int) (I2 Int))
 
     ;; Syntax
     ((($t) ($or_1 AP) ($or_2 AP AP) ($or_3 AP AP AP))
-     (($eq I I) ($neq I I))
-     (($x1) ($y1) ($o1) ($x2) ($y2) ($o2)))
+     (($eq I1 I2) ($neq I1 I2))
+     (($x1) ($y1) ($o1)) 
+     (($x2) ($y2) ($o2)))
 )
 
 ;; Semantic rules
@@ -32,10 +31,11 @@
     (AP ($eq it1 it2) (= it1 it2))
     (AP ($neq it1 it2) (distinct it1 it2))
 
-    (I ($x1) x1)
-    (I ($y1) y1)
-    (I ($o1) o1)
-    (I ($x2) x2)
-    (I ($y2) y2)
-    (I ($o2) o2)
+    (I1 ($x1) x1)
+    (I1 ($y1) y1)
+    (I1 ($o1) o1)
+    
+    (I2 ($x2) x2)
+    (I2 ($y2) y2)
+    (I2 ($o2) o2)
 )
