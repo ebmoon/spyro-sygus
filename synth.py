@@ -6,6 +6,9 @@ from cvc5_util import *
 from abc import ABC
 import cvc5
 
+class ConstantGrammarException(Exception):
+    pass
+
 class SynthesisOracleInitializer(ASTVisitor, ABC):
     
     def __init__(self, solver):
@@ -16,6 +19,7 @@ class SynthesisOracleInitializer(ASTVisitor, ABC):
         self.rule_dict = {}
 
         self.grammar = None
+        self.added_const_grammar = False
 
     def visit_sort_expression(self, sort_expression):
         identifier = sort_expression.identifier
@@ -57,12 +61,21 @@ class SynthesisOracleInitializer(ASTVisitor, ABC):
 
     def visit_semantic_rule(self, semantic_rule):
         symbol = semantic_rule.nonterminal
+        nonterminal = self.cxt_variables[symbol]
 
         current_cxt = self.cxt_variables.copy()
-        self.cxt_variables = semantic_rule.match.accept(self)
 
-        term = semantic_rule.term.accept(self)
-        self.grammar.addRule(self.cxt_variables[symbol], term)
+        try:
+            self.cxt_variables = semantic_rule.match.accept(self)
+
+            term = semantic_rule.term.accept(self)
+            self.grammar.addRule(nonterminal, term)
+        except ConstantGrammarException:
+            self.grammar.addAnyConstant(nonterminal)
+
+            if not self.added_const_grammar:
+                self.solver.setOption("sygus-grammar-cons", "any-const")
+                self.added_const_grammar = True
 
         self.cxt_variables = current_cxt
 
@@ -74,7 +87,10 @@ class SynthesisOracleInitializer(ASTVisitor, ABC):
         context = self.cxt_variables.copy()
         for i, symbol in enumerate(variables):
             match_arg_symbol = sorts[i].identifier
-            context[symbol] = self.cxt_variables[match_arg_symbol]
+            if match_arg_symbol in self.cxt_variables:
+                context[symbol] = self.cxt_variables[match_arg_symbol]
+            else:
+                raise ConstantGrammarException
         
         return context
 
@@ -191,69 +207,20 @@ class SynthesisUnrealizabilityChecker(BaseUnrealizabilityChecker):
 class SynthesisOracle(object):
 
     def __init__(self, ast):
-        self.synthesizer = cvc5.Solver()
         self.ast = ast
 
-        self.synthesizer.setOption("sygus", "true")
-        self.synthesizer.setOption("incremental", "true")
-        self.synthesizer.setLogic("LIA")
-
-        initializer = SynthesisOracleInitializer(self.synthesizer)
-        self.spec = ast.accept(initializer)
-
-        self.synthesizer.push(2)
-
-        self.new_pos = []
-        self.neg_may = []
-
-    def add_positive_example(self, e):
-        self.synthesizer.pop()
-        e = [convert_z3_to_cvc5(self.synthesizer, v) for v in e]
-        term = self.synthesizer.mkTerm(Kind.APPLY_UF, self.spec, *e)
+    def add_positive_example(self, synthesizer, spec, e):
+        e = [convert_z3_to_cvc5(synthesizer, v) for v in e]
+        term = synthesizer.mkTerm(Kind.APPLY_UF, spec, *e)
         
-        self.synthesizer.addSygusConstraint(term)
-        self.new_pos.append(term)
+        synthesizer.addSygusConstraint(term)
 
-        self.synthesizer.push()
-
-        for e_term in self.neg_may:
-            self.synthesizer.addSygusConstraint(e_term)
-
-    def add_negative_example(self, e):
-        e = [convert_z3_to_cvc5(self.synthesizer, v) for v in e]
-        term = self.synthesizer.mkTerm(Kind.APPLY_UF, self.spec, *e)
-        neg_term = self.synthesizer.mkTerm(Kind.NOT, term)
+    def add_negative_example(self, synthesizer, spec, e):
+        e = [convert_z3_to_cvc5(synthesizer, v) for v in e]
+        term = synthesizer.mkTerm(Kind.APPLY_UF, spec, *e)
+        neg_term = synthesizer.mkTerm(Kind.NOT, term)
         
-        self.synthesizer.addSygusConstraint(neg_term)
-        self.neg_may.append(neg_term)
-
-    def freeze_negative_example(self):
-        self.synthesizer.pop()
-
-        for e_term in self.neg_may:
-            self.synthesizer.addSygusConstraint(e_term)
-        
-        self.neg_may = []
-
-        self.synthesizer.push()
-
-    def clear_negative_may(self):
-        self.synthesizer.pop()     
-        
-        self.neg_may = []
-
-        self.synthesizer.push()
-
-    def clear_negative_example(self):
-        self.synthesizer.pop(2)
-
-        for e_term in self.new_pos:
-            self.synthesizer.addSygusConstraint(e_term)
-        
-        self.new_pos = []
-        self.neg_may = []
-
-        self.synthesizer.push(2)
+        synthesizer.addSygusConstraint(neg_term)
 
     def synthesize(self, pos, neg, check_realizable = True):   
         if check_realizable:
@@ -262,9 +229,23 @@ class SynthesisOracle(object):
             realizable = self.ast.accept(checker)
 
         if not check_realizable or solver.query(realizable) == sat:
-            synthResult = self.synthesizer.checkSynth()
+            synthesizer = cvc5.Solver()
+            synthesizer.setOption("sygus", "true")
+            synthesizer.setOption("incremental", "true")
+            synthesizer.setLogic("LIA")   
+
+            initializer = SynthesisOracleInitializer(synthesizer)
+            spec = self.ast.accept(initializer)
+
+            for e in pos:
+                self.add_positive_example(synthesizer, spec, e)
+
+            for e in neg:
+                self.add_negative_example(synthesizer, spec, e)
+
+            synthResult = synthesizer.checkSynth()
             if synthResult.hasSolution():
-                return self.synthesizer.getSynthSolution(self.spec)
+                return synthesizer.getSynthSolution(spec)
             else:
                 # should not happen
                 print(pos, neg)

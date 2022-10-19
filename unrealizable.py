@@ -119,7 +119,9 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
 
             for i, symbol in enumerate(variables):
                 term_sort = sorts[i]
-                ret_variable, _ = self.define_new_variable(f'{symbol}_{n}', term_sort)
+
+                var_symbol = symbol if term_sort.identifier in self.cxt_sorts else f'{symbol}_{n}'
+                ret_variable, _ = self.define_new_variable(var_symbol, term_sort)
                 ret_variable_copies[symbol].append(ret_variable)
 
             self.cxt_variables = current_cxt

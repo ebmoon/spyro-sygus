@@ -77,7 +77,6 @@ class PropertySynthesizer:
 
         # Return the result
         if e_pos != None:
-            self.__synthesis_oracle.add_positive_example(e_pos)
             return (e_pos, False)
         else:
             return (None, elapsed_time >= self.__timeout)
@@ -100,7 +99,6 @@ class PropertySynthesizer:
 
         # Return the result
         if e_neg != None:
-            self.__synthesis_oracle.add_negative_example(e_neg)
             return e_neg
         else:
             self.__time_last_query = elapsed_time
@@ -153,8 +151,6 @@ class PropertySynthesizer:
                     phi = phi_last_sound
                     neg_may = []
                     
-                    self.__synthesis_oracle.clear_negative_may()
-
                 # MaxSynth is not implemented currently, and this should not be happened
                 elif phi == None:
                     raise NotImplementedError
@@ -175,8 +171,6 @@ class PropertySynthesizer:
                 neg_must += neg_may
                 neg_may = []
                 
-                self.__synthesis_oracle.freeze_negative_example()
-
                 phi_precision = [phi_e] if best else phi_list + phi_sound 
                 e_neg = self.__check_precision(phi_precision, phi_e, pos, neg_must, neg_may)
                 if e_neg != None:   # Not precise
@@ -199,8 +193,6 @@ class PropertySynthesizer:
                 e_neg = self.__check_improves_predicate(phi_list, phi)
                 if e_neg != None:
                     neg_must = [e_neg]
-                    self.__synthesis_oracle.add_negative_example(e_neg)
-                    self.__synthesis_oracle.freeze_negative_example()
                 else:            
                     return phi_list
 
@@ -208,8 +200,6 @@ class PropertySynthesizer:
             phi, pos, _ = self.__synthesize_property([], phi, pos, neg_must, True)
      
             phi_list.append(phi)
-
-            self.__synthesis_oracle.clear_negative_example()
 
             if self.__verbose:
                 print("Obtained a best L-property")
