@@ -54,7 +54,7 @@ class PrecisionUnrealizabilityChecker(BaseUnrealizabilityChecker):
         body_arg += [False] * len(self.neg)
         body_arg += [False]
 
-        body.append(self.convert_term(self.phi))
+        # body.append(self.convert_term(self.phi))
         body.append(start_sem(*body_arg))
         body.append(positive(*variables, False))
 

@@ -124,11 +124,20 @@ class PropertySynthesizer:
         # Return the result
         return e_neg
 
-    def __synthesize_property(self, phi_list, phi_init, pos, neg_must):
+    def __add_new_sound_property(self, phi_list, phi):
+        phi_list_new = []
+        for phi_old in phi_list:
+            if self.__implication_oracle.check_implication([phi], phi_old) != None:
+                phi_list_new.append(phi_old)
+
+        return phi_list_new + [phi]
+
+    def __synthesize_property(self, phi_list, phi_init, pos, neg_must, best = False):
         # Assume that current phi is sound
         phi_e = phi_init
         phi_last_sound = None
         neg_may = []
+        phi_sound = []
 
         while True:
             e_pos, timeout = self.__check_soundness(phi_e)
@@ -159,6 +168,7 @@ class PropertySynthesizer:
             # Check precision after pass soundness check
             else:
                 phi_last_sound = phi_e    # Remember the last sound property
+                phi_sound = self.__add_new_sound_property(phi_sound, phi_e)
 
                 # If phi_e is phi_truth, which is initial candidate of the first call,
                 # then phi_e doesn't rejects examples in neg_may. 
@@ -167,7 +177,8 @@ class PropertySynthesizer:
                 
                 self.__synthesis_oracle.freeze_negative_example()
 
-                e_neg = self.__check_precision(phi_list, phi_e, pos, neg_must, neg_may)
+                phi_precision = [phi_e] if best else phi_list + phi_sound 
+                e_neg = self.__check_precision(phi_precision, phi_e, pos, neg_must, neg_may)
                 if e_neg != None:   # Not precise
                     neg_may.append(e_neg)
                     phi_e = self.__synthesize(pos, neg_must, neg_may, False)
@@ -180,7 +191,7 @@ class PropertySynthesizer:
 
         while True:
             phi_init = self.__synthesize(pos, [], [])
-            phi, pos, neg_must = self.__synthesize_property(phi_list, phi_init, pos, [])
+            phi, pos, neg_must = self.__synthesize_property(phi_list, phi_init, pos, [], False)
 
             # Check if most precise candidates improves property. 
             # If neg_must is nonempty, those examples are witness of improvement.
@@ -194,7 +205,7 @@ class PropertySynthesizer:
                     return phi_list
 
             # Strengthen the found property to be most precise L-property
-            phi, pos, _ = self.__synthesize_property([], phi, pos, neg_must)
+            phi, pos, _ = self.__synthesize_property([], phi, pos, neg_must, True)
      
             phi_list.append(phi)
 
