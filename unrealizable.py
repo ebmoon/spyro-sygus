@@ -5,7 +5,6 @@ import cvc5
 from cvc5 import Kind
 
 class BaseUnrealizabilityChecker(ASTVisitor, ABC):
-    
     def __init__(self, solver, pos, neg):
         self.solver = solver
         self.pos = pos
@@ -31,9 +30,6 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
         self.var_cnt = 0
 
     def fresh_var(self, id, sort):
-        if type(sort) == SortExpression:
-            sort = sort.accept(self)
-        
         var, _ = self.define_new_variable(f'{id}_{self.var_cnt}', sort)        
         self.var_cnt += 1
 
