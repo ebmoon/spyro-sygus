@@ -28,6 +28,17 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
         self.function_variables_save = None
         self.copied_function_variables_save = None
 
+        self.var_cnt = 0
+
+    def fresh_var(self, id, sort):
+        if type(sort) == SortExpression:
+            sort = sort.accept(self)
+        
+        var, _ = self.define_new_variable(f'{id}_{self.var_cnt}', sort)        
+        self.var_cnt += 1
+
+        return var
+
     def visit_identifier_term(self, identifier_term):
         if identifier_term.identifier in reserved_ids:
             return [([], reserved_ids[identifier_term.identifier])]
@@ -52,8 +63,9 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
             return [(premise, fn(*args)) for premise, args in args_join]
         else:
             args_join = foldl(join, [([], [])], arg_terms)
-            fn = self.cxt_functions[function_application_term.identifier]
-            return [(premise, fn(*args)) for premise, args in args_join]
+            fn, sort = self.cxt_functions[function_application_term.identifier]
+            out_var = self.fresh_var(fn.name(), sort)
+            return [(premise + [fn(*args, out_var, True)], out_var) for premise, args in args_join]
 
     def visit_sort_expression(self, sort_expression):
         if sort_expression.identifier in self.cxt_sorts:
@@ -111,7 +123,6 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
         self.rule_args[head_symbol] = variables
 
         body = []
-        contexts = []
         ret_variable_copies = {symbol:[] for symbol in variables}
 
         for n in range(self.num_examples):
@@ -190,7 +201,7 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
             self.var_copies[output_id].append(variable)
 
         function = Function(identifier, *input_sorts, output_sort, BoolSort(), BoolSort())
-        self.cxt_functions[identifier] = function
+        self.cxt_functions[identifier] = (function, output_sort)
         self.solver.register_relation(function)
 
         rules = term.accept(self)

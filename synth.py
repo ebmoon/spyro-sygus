@@ -73,10 +73,6 @@ class SynthesisOracleInitializer(ASTVisitor, ABC):
         except ConstantGrammarException:
             self.grammar.addAnyConstant(nonterminal)
 
-            if not self.added_const_grammar:
-                self.solver.setOption("sygus-grammar-cons", "any-const")
-                self.added_const_grammar = True
-
         self.cxt_variables = current_cxt
 
     def visit_production_match(self, production_match):
@@ -207,20 +203,69 @@ class SynthesisUnrealizabilityChecker(BaseUnrealizabilityChecker):
 class SynthesisOracle(object):
 
     def __init__(self, ast):
+        self.synthesizer = cvc5.Solver()
         self.ast = ast
 
-    def add_positive_example(self, synthesizer, spec, e):
-        e = [convert_z3_to_cvc5(synthesizer, v) for v in e]
-        term = synthesizer.mkTerm(Kind.APPLY_UF, spec, *e)
-        
-        synthesizer.addSygusConstraint(term)
+        self.synthesizer.setOption("sygus", "true")
+        self.synthesizer.setOption("incremental", "true")
+        self.synthesizer.setLogic("LIA")
 
-    def add_negative_example(self, synthesizer, spec, e):
-        e = [convert_z3_to_cvc5(synthesizer, v) for v in e]
-        term = synthesizer.mkTerm(Kind.APPLY_UF, spec, *e)
-        neg_term = synthesizer.mkTerm(Kind.NOT, term)
+        initializer = SynthesisOracleInitializer(self.synthesizer)
+        self.spec = ast.accept(initializer)
+
+        self.synthesizer.push(2)
+
+        self.new_pos = []
+        self.neg_may = []
+
+    def add_positive_example(self, e):
+        self.synthesizer.pop()
+        e = [convert_z3_to_cvc5(self.synthesizer, v) for v in e]
+        term = self.synthesizer.mkTerm(Kind.APPLY_UF, self.spec, *e)
         
-        synthesizer.addSygusConstraint(neg_term)
+        self.synthesizer.addSygusConstraint(term)
+        self.new_pos.append(term)
+
+        self.synthesizer.push()
+
+        for e_term in self.neg_may:
+            self.synthesizer.addSygusConstraint(e_term)
+
+    def add_negative_example(self, e):
+        e = [convert_z3_to_cvc5(self.synthesizer, v) for v in e]
+        term = self.synthesizer.mkTerm(Kind.APPLY_UF, self.spec, *e)
+        neg_term = self.synthesizer.mkTerm(Kind.NOT, term)
+        
+        self.synthesizer.addSygusConstraint(neg_term)
+        self.neg_may.append(neg_term)
+
+    def freeze_negative_example(self):
+        self.synthesizer.pop()
+
+        for e_term in self.neg_may:
+            self.synthesizer.addSygusConstraint(e_term)
+        
+        self.neg_may = []
+
+        self.synthesizer.push()
+
+    def clear_negative_may(self):
+        self.synthesizer.pop()     
+        
+        self.neg_may = []
+
+        self.synthesizer.push()
+
+    def clear_negative_example(self):
+        self.synthesizer.pop(2)
+
+        for e_term in self.new_pos:
+            self.synthesizer.addSygusConstraint(e_term)
+        
+        self.new_pos = []
+        self.neg_may = []
+
+        self.synthesizer.push(2)
 
     def synthesize(self, pos, neg, check_realizable = True):   
         if check_realizable:
@@ -229,23 +274,9 @@ class SynthesisOracle(object):
             realizable = self.ast.accept(checker)
 
         if not check_realizable or solver.query(realizable) == sat:
-            synthesizer = cvc5.Solver()
-            synthesizer.setOption("sygus", "true")
-            synthesizer.setOption("incremental", "true")
-            synthesizer.setLogic("LIA")   
-
-            initializer = SynthesisOracleInitializer(synthesizer)
-            spec = self.ast.accept(initializer)
-
-            for e in pos:
-                self.add_positive_example(synthesizer, spec, e)
-
-            for e in neg:
-                self.add_negative_example(synthesizer, spec, e)
-
-            synthResult = synthesizer.checkSynth()
+            synthResult = self.synthesizer.checkSynth()
             if synthResult.hasSolution():
-                return synthesizer.getSynthSolution(spec)
+                return self.synthesizer.getSynthSolution(self.spec)
             else:
                 # should not happen
                 print(pos, neg)
