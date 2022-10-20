@@ -117,12 +117,20 @@ class SynthesisOracleInitializer(ASTVisitor, ABC):
         inputs = target_function_command.inputs
         output_id, output_sort = target_function_command.output
 
+        arg_vars = []
         for identifier, sort in inputs:
             arg_var = self.solver.mkVar(sort.accept(self), identifier)
+            arg_vars.append(arg_var)
             self.cxt_variables[identifier] = arg_var
 
-        out_var = self.solver.mkVar(output_sort.accept(self), output_id)
+        out_sort = output_sort.accept(self)
+        out_var = self.solver.mkVar(out_sort, output_id)
         self.cxt_variables[output_id] = out_var
+
+        term = target_function_command.term.accept(self)
+        f = self.solver.defineFun(target_function_command.identifier, arg_vars, out_sort, term)
+
+        return (f, arg_vars, out_var)
 
     def visit_program(self, program):
         for target_function in program.target_functions:
@@ -137,68 +145,6 @@ class SynthesisOracleInitializer(ASTVisitor, ABC):
         spec = self.solver.synthFun("spec", args, bool_sort, self.grammar)
 
         return spec
-
-class SynthesisUnrealizabilityChecker(BaseUnrealizabilityChecker):
-
-    def __init__(self, solver, pos, neg):
-        super().__init__(solver, pos, neg)
-
-    def visit_target_function_command(self, target_function_command):
-        identifier = target_function_command.identifier
-        inputs = target_function_command.inputs
-        output_id, output_sort_str = target_function_command.output
-        term = target_function_command.term
-
-        input_sorts = []
-        input_variables = []
-        copied_variables = []
-        for input_id, input_sort in inputs:
-            variable, sort = self.define_new_variable(input_id, input_sort)
-            input_sorts.append(sort)
-            input_variables.append(variable)
-            self.var_copies[input_id] = []
-
-        output_variable, output_sort = self.define_new_variable(output_id, output_sort_str)
-        self.var_copies[output_id] = []
-
-
-        for i in range(self.num_examples):
-            for input_id, input_sort in inputs:
-                variable, _ = self.define_new_variable(f'{input_id}_{i}', input_sort)
-                copied_variables.append(variable)
-                self.var_copies[input_id].append(variable)
-
-            variable, _ = self.define_new_variable(f'{output_id}_{i}', output_sort_str)
-            copied_variables.append(variable)
-            self.var_copies[output_id].append(variable)
-
-        function = Function(identifier, *input_sorts, output_sort, BoolSort(), BoolSort())
-        self.cxt_functions[identifier] = function
-        self.function_args[identifier] = input_variables + [output_variable]
-
-        return function
-
-    def visit_program(self, program):
-        [target_function.accept(self) for target_function in program.target_functions]
-        sem_functions = program.lang_syntax.accept(self)
-        program.lang_semantics.accept(self)
-
-        start_sem = sem_functions[0]
-        realizable = Function("realizable", BoolSort())
-
-        head = realizable()
-        
-        body_arg = [item for e_pos in self.pos for item in e_pos]
-        body_arg += [item for e_neg in self.neg for item in e_neg]
-        body_arg += [True] * len(self.pos)
-        body_arg += [False] * len(self.neg)
-
-        body = start_sem(*body_arg)
-
-        self.solver.register_relation(realizable)
-        self.solver.add_rule(head, body)
-
-        return realizable
 
 class SynthesisOracle(object):
 
