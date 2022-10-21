@@ -18,6 +18,8 @@ class SynthesisOracleInitializer(ASTVisitor, ABC):
 
         self.rule_dict = {}
 
+        self.sygus_vars = []
+
         self.grammar = None
         self.added_const_grammar = False
 
@@ -118,33 +120,55 @@ class SynthesisOracleInitializer(ASTVisitor, ABC):
         output_id, output_sort = target_function_command.output
 
         arg_vars = []
+        sygus_arg_vars = []
         for identifier, sort in inputs:
-            arg_var = self.solver.mkVar(sort.accept(self), identifier)
+            sort = sort.accept(self)
+            arg_var = self.solver.mkVar(sort, identifier)
+            sygus_var = self.solver.declareSygusVar(identifier, sort)
+            
             arg_vars.append(arg_var)
+            sygus_arg_vars.append(sygus_var)
+            self.sygus_vars.append(sygus_var)
+            
             self.cxt_variables[identifier] = arg_var
 
         out_sort = output_sort.accept(self)
         out_var = self.solver.mkVar(out_sort, output_id)
+        sygus_out_var = self.solver.declareSygusVar(output_id, out_sort)
         self.cxt_variables[output_id] = out_var
+
+        self.sygus_vars.append(sygus_out_var)
 
         term = target_function_command.term.accept(self)
         f = self.solver.defineFun(target_function_command.identifier, arg_vars, out_sort, term)
 
-        return (f, arg_vars, out_var)
+        return (f, sygus_arg_vars, sygus_out_var)
 
     def visit_program(self, program):
-        for target_function in program.target_functions:
-            target_function.accept(self)
-
+        funs = [target_fun.accept(self) for target_fun in program.target_functions]
+        
         args = list(self.cxt_variables.values())
         bool_sort = self.solver.getBooleanSort()
-        
+
         program.lang_syntax.accept(self)
         program.lang_semantics.accept(self)
 
-        spec = self.solver.synthFun("spec", args, bool_sort, self.grammar)
+        body = []
+        for f, arg_vars, out_var in funs:
+            fun_app = self.solver.mkTerm(Kind.APPLY_UF, f, *arg_vars)
+            t = self.solver.mkTerm(Kind.EQUAL, out_var, fun_app)
+            body.append(t)
 
-        return spec
+        body_conj = self.solver.mkTerm(Kind.AND, *body) if len(body) > 1 else \
+            body[0] if len(body) > 0 else self.solver.mkTrue()
+
+        spec = self.solver.synthFun("spec", args, bool_sort, self.grammar)
+        head = self.solver.mkTerm(Kind.APPLY_UF, spec, *self.sygus_vars)
+
+        soundness_constraint = self.solver.mkTerm(Kind.IMPLIES, body_conj, head)
+        self.solver.addSygusConstraint(soundness_constraint)
+
+        return spec, self.sygus_vars, args
 
 class SynthesisOracle(object):
 
@@ -157,76 +181,39 @@ class SynthesisOracle(object):
         self.synthesizer.setLogic("LIA")
 
         initializer = SynthesisOracleInitializer(self.synthesizer)
-        self.spec = ast.accept(initializer)
+        self.spec, self.sygus_vars, self.vars = ast.accept(initializer)
+        self.var_list = self.synthesizer.mkTerm(Kind.VARIABLE_LIST, *self.vars)
 
-        self.synthesizer.push(2)
-
-        self.new_pos = []
-        self.neg_may = []
-
-    def add_positive_example(self, e):
-        self.synthesizer.pop()
-        e = [convert_z3_to_cvc5(self.synthesizer, v) for v in e]
-        term = self.synthesizer.mkTerm(Kind.APPLY_UF, self.spec, *e)
-        
-        self.synthesizer.addSygusConstraint(term)
-        self.new_pos.append(term)
-
-        self.synthesizer.push()
-
-        for e_term in self.neg_may:
-            self.synthesizer.addSygusConstraint(e_term)
-
-    def add_negative_example(self, e):
-        e = [convert_z3_to_cvc5(self.synthesizer, v) for v in e]
-        term = self.synthesizer.mkTerm(Kind.APPLY_UF, self.spec, *e)
-        neg_term = self.synthesizer.mkTerm(Kind.NOT, term)
-        
-        self.synthesizer.addSygusConstraint(neg_term)
-        self.neg_may.append(neg_term)
-
-    def freeze_negative_example(self):
-        self.synthesizer.pop()
-
-        for e_term in self.neg_may:
-            self.synthesizer.addSygusConstraint(e_term)
-        
-        self.neg_may = []
-
-        self.synthesizer.push()
-
-    def clear_negative_may(self):
-        self.synthesizer.pop()     
-        
-        self.neg_may = []
-
-        self.synthesizer.push()
-
-    def clear_negative_example(self):
-        self.synthesizer.pop(2)
-
-        for e_term in self.new_pos:
-            self.synthesizer.addSygusConstraint(e_term)
-        
-        self.new_pos = []
-        self.neg_may = []
-
-        self.synthesizer.push(2)
-
-    def synthesize(self, pos, neg, check_realizable = True):   
-        if check_realizable:
-            solver = Fixedpoint()
-            checker = SynthesisUnrealizabilityChecker(solver, pos, neg)
-            realizable = self.ast.accept(checker)
-
-        if not check_realizable or solver.query(realizable) == sat:
-            synthResult = self.synthesizer.checkSynth()
-            if synthResult.hasSolution():
-                return self.synthesizer.getSynthSolution(self.spec)
-            else:
-                # should not happen
-                print(pos, neg)
-                print(f"Unknown: {synthResult.isUnknown()}")
-                raise NotImplementedError
+    def synthesize_sound(self):
+        synthResult = self.synthesizer.checkSynth()
+        if synthResult.hasSolution():
+            return self.synthesizer.getSynthSolution(self.spec)
         else:
+            return None
+
+    def synthesize_stronger(self, phi_list, phi):   
+        self.synthesizer.push(1)
+
+        phi_sygus_app = self.synthesizer.mkTerm(Kind.APPLY_UF, phi, *self.sygus_vars)
+        spec_sygus_app = self.synthesizer.mkTerm(Kind.APPLY_UF, self.spec, *self.sygus_vars)
+        strengthening_constraint = self.synthesizer.mkTerm(Kind.IMPLIES, spec_sygus_app, phi_sygus_app)
+
+        self.synthesizer.addSygusConstraint(strengthening_constraint)
+
+        phi_list_app = [self.synthesizer.mkTerm(Kind.APPLY_UF, p, *self.vars) for p in phi_list]
+        phi_app = self.synthesizer.mkTerm(Kind.APPLY_UF, phi, *self.vars)
+        spec_app = self.synthesizer.mkTerm(Kind.APPLY_UF, self.spec, *self.vars)
+        spec_app_neg = self.synthesizer.mkTerm(Kind.NOT, spec_app)
+        strengthening_witness = self.synthesizer.mkTerm(Kind.AND, spec_app_neg, phi_app, *phi_list_app)
+        strict_constraint = self.synthesizer.mkTerm(Kind.EXISTS, self.var_list, strengthening_witness)
+
+        self.synthesizer.addSygusConstraint(strict_constraint)
+
+        synthResult = self.synthesizer.checkSynth()
+        if synthResult.hasSolution():
+            soln = self.synthesizer.getSynthSolution(self.spec)
+            self.synthesizer.pop(1)
+            return soln
+        else:
+            self.synthesizer.pop(1)
             return None

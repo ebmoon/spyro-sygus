@@ -42,17 +42,3 @@
     (I ($x4) x4)
     (I ($o) o)
 )
-    ((Start Int ((Constant Int)))))
-
-(define-fun max4 ((x1 Int) (x2 Int) (x3 Int) (x4 Int)) Int 
-                 
-
-(generator 
-    ((B Bool) (AP Bool) (I Int))
-
-    ((B Bool (true AP (or AP AP) (or AP AP AP) (or AP AP AP AP)))
-     (AP Bool ((= I I) (<= I I) (>= I I) (> I I) (< I I) (distinct I I)))
-     (I Int (x1 x2 x3 x4 o)))
-)
-
-(constraint (= o (max4 x1 x2 x3 x4)))
