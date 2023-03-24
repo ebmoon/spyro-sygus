@@ -11,7 +11,7 @@ from util import *
 
 
 class PropertySynthesizer:
-    def __init__(self, infile, outfile, v):
+    def __init__(self, infile, outfile, v, seed = 0, keep_neg_may = False):
 
         # Input/Output file stream
         self.__infile = infile
@@ -25,14 +25,38 @@ class PropertySynthesizer:
         self.__inner_iterator = 0
 
         # Primitives
-        self.__synthesis_oracle = SynthesisOracle(self.__ast)
-        self.__soundness_oracle = SoundnessOracle(self.__ast)
-        self.__precision_oracle = PrecisionOracle(self.__ast)
-        self.__implication_oracle = ImplicationOracle(self.__ast)
+        self.__synthesis_oracle = SynthesisOracle(self.__ast, seed)
+        self.__soundness_oracle = SoundnessOracle(self.__ast, seed)
+        self.__precision_oracle = PrecisionOracle(self.__ast, seed)
+        self.__implication_oracle = ImplicationOracle(self.__ast, seed)
 
         # Options
         self.__verbose = v
         self.__timeout = 300
+        self.__keep_neg_may = keep_neg_may
+        self.__seed = seed
+
+        # Statistics
+        self.__num_soundness = 0
+        self.__num_precision = 0
+        self.__num_synthesis = 0
+
+        self.__time_soundness = 0
+        self.__time_precision = 0
+        self.__time_synthesis = 0
+        
+        self.__num_soundness_total = 0
+        self.__num_precision_total = 0
+        self.__num_synthesis_total = 0 
+        
+        self.__time_soundness_total = 0
+        self.__time_precision_total = 0
+        self.__time_synthesis_total = 0
+
+        self.__time_last_query = 0
+        self.__time_last_query_total = 0
+
+        self.__statistics = []     
 
     def __write_output(self, output):
         self.__outfile.write(output)     
@@ -50,14 +74,21 @@ class PropertySynthesizer:
         # Update statistics
         elapsed_time = end_time - start_time
 
+        if check_realizable:
+            self.__num_synthesis += 1
+            self.__time_synthesis += elapsed_time
+        else:
+            self.__time_precision += elapsed_time
+
         if self.__verbose:
             print(phi)
 
+        self.__time_last_query = elapsed_time
         # Return the result
         if phi != None:
-            return phi
+            return phi, elapsed_time >= self.__timeout
         else:
-            return None
+            return None, elapsed_time >= self.__timeout
 
     def __check_soundness(self, phi):
         if self.__verbose:
@@ -71,14 +102,17 @@ class PropertySynthesizer:
 
         # Statistics
         elapsed_time = end_time - start_time
+        self.__num_soundness += 1
+        self.__time_soundness += elapsed_time
 
         if self.__verbose:
             print(e_pos)
 
+        self.__time_last_query = elapsed_time
         # Return the result
         if e_pos != None:
             self.__synthesis_oracle.add_positive_example(e_pos)
-            return (e_pos, False)
+            return (e_pos, elapsed_time >= self.__timeout)
         else:
             return (None, elapsed_time >= self.__timeout)
 
@@ -94,17 +128,19 @@ class PropertySynthesizer:
 
         # Update statistics
         elapsed_time = end_time - start_time
+        self.__num_precision += 1
+        self.__time_precision += elapsed_time
 
         if self.__verbose:
             print(e_neg)
 
+        self.__time_last_query = elapsed_time
         # Return the result
         if e_neg != None:
             self.__synthesis_oracle.add_negative_example(e_neg)
-            return e_neg
+            return e_neg, elapsed_time >= self.__timeout
         else:
-            self.__time_last_query = elapsed_time
-            return None
+            return None, elapsed_time >= self.__timeout
 
     def __check_improves_predicate(self, phi_list, phi):
         if self.__verbose:
@@ -123,6 +159,27 @@ class PropertySynthesizer:
 
         # Return the result
         return e_neg
+
+    def __reset_statistics(self, reset = True):
+        self.__num_synthesis_total += self.__num_synthesis
+        self.__num_soundness_total += self.__num_soundness
+        self.__num_precision_total += self.__num_precision
+        
+        self.__time_synthesis_total += self.__time_synthesis
+        self.__time_soundness_total += self.__time_soundness
+        self.__time_precision_total += self.__time_precision 
+        self.__time_last_query_total += self.__time_last_query  
+
+        if reset:
+            self.__num_soundness = 0
+            self.__num_precision = 0
+            self.__num_synthesis = 0
+
+            self.__time_soundness = 0
+            self.__time_precision = 0
+            self.__time_synthesis = 0
+
+            self.__time_last_query = 0
 
     def __add_new_sound_property(self, phi_list, phi):
         phi_list_new = []
@@ -145,11 +202,13 @@ class PropertySynthesizer:
                 pos.append(e_pos)
                 
                 # First try synthesis
-                phi = self.__synthesize(pos, neg_must, neg_may)
+                phi, timeout = self.__synthesize(pos, neg_must, neg_may)
+                if timeout:
+                    return (phi_last_sound, pos, neg_must)
 
                 # If neg_may is a singleton set, it doesn't need to call MaxSynth
                 # Revert back to the last sound property we found
-                if phi == None and len(neg_may) == 1 and phi_last_sound != None:
+                if phi == None and phi_last_sound != None:
                     phi = phi_last_sound
                     neg_may = []
                     
@@ -162,7 +221,7 @@ class PropertySynthesizer:
                 phi_e = phi
          
             # Return the last sound property found
-            elif timeout and phi_last_sound != None:
+            elif timeout:
                 return (phi_last_sound, pos, neg_must + neg_may)
             
             # Check precision after pass soundness check
@@ -172,25 +231,29 @@ class PropertySynthesizer:
 
                 # If phi_e is phi_truth, which is initial candidate of the first call,
                 # then phi_e doesn't rejects examples in neg_may. 
-                neg_must += neg_may
-                neg_may = []
-                
-                self.__synthesis_oracle.freeze_negative_example()
+                if not self.__keep_neg_may:
+                    neg_must += neg_may
+                    neg_may = []
+                    
+                    self.__synthesis_oracle.freeze_negative_example()
 
-                phi_precision = [phi_e] if best else phi_list + phi_sound 
-                e_neg = self.__check_precision(phi_precision, phi_e, pos, neg_must, neg_may)
-                if e_neg != None:   # Not precise
+                phi_precision = [phi_e] if best else phi_list + [phi_e]
+                e_neg, timeout = self.__check_precision(phi_precision, phi_e, pos, neg_must, neg_may)
+                if timeout or e_neg == None:
+                    return (phi_e, pos, neg_must + neg_may)
+                else:   # Not precise
                     neg_may.append(e_neg)
-                    phi_e = self.__synthesize(pos, neg_must, neg_may, False)
-                else:                               # Sound and Precise
-                    return (phi_e, pos, neg_must)
+                    phi_e, timeout = self.__synthesize(pos, neg_must, neg_may, False)
+                    if timeout:
+                        return (phi_last_sound, pos, neg_must)
+                    
 
     def __synthesize_all_properties(self):
         phi_list = []
         pos = []
 
         while True:
-            phi_init = self.__synthesize(pos, [], [])
+            phi_init, timeout = self.__synthesize(pos, [], [])
             phi, pos, neg_must = self.__synthesize_property(phi_list, phi_init, pos, [], False)
 
             # Check if most precise candidates improves property. 
@@ -201,7 +264,8 @@ class PropertySynthesizer:
                     neg_must = [e_neg]
                     self.__synthesis_oracle.add_negative_example(e_neg)
                     self.__synthesis_oracle.freeze_negative_example()
-                else:            
+                else:
+                    self.__reset_statistics(False)
                     return phi_list
 
             # Strengthen the found property to be most precise L-property
@@ -210,6 +274,7 @@ class PropertySynthesizer:
             phi_list.append(phi)
 
             self.__synthesis_oracle.clear_negative_example()
+            self.__reset_statistics()
 
             if self.__verbose:
                 print("Obtained a best L-property")
@@ -220,4 +285,16 @@ class PropertySynthesizer:
     
     def run(self):
         phi_list = self.__synthesize_all_properties()
-        print(phi_list)
+
+        self.__write_output(str(len(phi_list)) + ",")
+        self.__write_output(str(self.__num_synthesis_total) + ",")
+        self.__write_output(f'{self.__time_synthesis_total:.2f},')
+        self.__write_output(str(self.__num_soundness_total) + ",")
+        self.__write_output(f'{self.__time_soundness_total:.2f},')
+        self.__write_output(str(self.__num_precision_total) + ",")
+        self.__write_output(f'{self.__time_precision_total:.2f},')
+        self.__write_output(f'{self.__time_synthesis + self.__time_soundness + self.__time_precision:.2f},')
+        self.__write_output(f'{self.__time_synthesis_total + self.__time_soundness_total + self.__time_precision_total:.2f},')
+        self.__write_output(f'{self.__time_last_query_total:.2f},')
+
+        self.__write_output(str(phi_list) + "\n")

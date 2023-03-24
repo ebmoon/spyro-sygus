@@ -37,11 +37,13 @@ class ImplicationOracleInitializer(BaseUnrealizabilityChecker):
 
 class ImplicationOracle(object):
 
-    def __init__(self, ast):
+    def __init__(self, ast, seed):
         self.ast = ast
+        self.seed = seed
 
     def check_implication(self, phi_list, phi):
         solver = Fixedpoint()
+        solver.set("spacer.random_seed", self.seed)
         initializer = ImplicationOracleInitializer(solver, phi_list, phi) 
         cex, num_variables = self.ast.accept(initializer)
 

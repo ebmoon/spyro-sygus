@@ -1,7 +1,7 @@
-(target-fun f 
+(target-fun abs
     ((x Int))     ;; Input variables
     (o Int)                 ;; Output variable
-    (ite (<= 0 x) (+ (f (- x 1)) 1) 0)  ;; Function term
+    (ite (<= 0 x) x (- x))  ;; Function term
 )
 
 (declare-language

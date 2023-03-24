@@ -202,12 +202,14 @@ class SynthesisUnrealizabilityChecker(BaseUnrealizabilityChecker):
 
 class SynthesisOracle(object):
 
-    def __init__(self, ast):
+    def __init__(self, ast, seed):
         self.synthesizer = cvc5.Solver()
         self.ast = ast
+        self.seed = seed
 
         self.synthesizer.setOption("sygus", "true")
         self.synthesizer.setOption("incremental", "true")
+        self.synthesizer.setOption("seed", str(seed))
         self.synthesizer.setLogic("LIA")
 
         initializer = SynthesisOracleInitializer(self.synthesizer)
@@ -270,6 +272,7 @@ class SynthesisOracle(object):
     def synthesize(self, pos, neg, check_realizable = True):   
         if check_realizable:
             solver = Fixedpoint()
+            solver.set("spacer.random_seed", self.seed)
             checker = SynthesisUnrealizabilityChecker(solver, pos, neg)
             realizable = self.ast.accept(checker)
 

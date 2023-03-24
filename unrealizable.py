@@ -295,6 +295,9 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
         elif term.getKind() == Kind.AND:
             args = [self.convert_term(term[i]) for i in range(term.getNumChildren())]
             return And(*args)
+        elif term.getKind() == Kind.NEG:
+            t1 = self.convert_term(term[0])
+            return - t1        
         elif term.getKind() == Kind.CONST_BOOLEAN:
             return term.getBooleanValue()
         elif term.getKind() == Kind.CONST_INTEGER:

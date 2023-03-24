@@ -68,11 +68,13 @@ class PrecisionUnrealizabilityChecker(BaseUnrealizabilityChecker):
 
 class PrecisionOracle(object):
 
-    def __init__(self, ast):
+    def __init__(self, ast, seed):
         self.ast = ast
+        self.seed = seed
 
     def check_precision(self, phi_list, phi, pos, neg):
         solver = Fixedpoint()
+        solver.set("spacer.random_seed", self.seed)
         initializer = PrecisionUnrealizabilityChecker(solver, pos, neg, phi_list, phi) 
         imprecise, num_variables = self.ast.accept(initializer)
 

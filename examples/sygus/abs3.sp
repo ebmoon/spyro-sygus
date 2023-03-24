@@ -1,4 +1,4 @@
-(target-fun max2 
+(target-fun abs
     ((x Int))     ;; Input variables
     (o Int)                 ;; Output variable
     (ite (<= 0 x) x (- x))  ;; Function term
@@ -11,12 +11,13 @@
 
     ;; Syntax
     ((($o_gt I))
-     (($n Int)))
+     (($zero) ($succ I)))
 )
 
 ;; Semantic rules
 (declare-semantics 
-    (B ($o_gt it) (>= o it))
+    (B ($o_gt it) (or (> x 10) (< x (- 20)) (<= o it)))
 
-    (I ($n num) num)
+    (I ($zero) 0)
+    (I ($succ it) (+ it 1))
 )

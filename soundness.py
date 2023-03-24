@@ -37,11 +37,13 @@ class SoundnessOracleInitializer(BaseUnrealizabilityChecker):
 
 class SoundnessOracle(object):
 
-    def __init__(self, ast):
+    def __init__(self, ast, seed):
         self.ast = ast
+        self.seed = seed
 
     def check_soundness(self, phi):
         solver = Fixedpoint()
+        solver.set("spacer.random_seed", self.seed)
         initializer = SoundnessOracleInitializer(solver, phi) 
         cex, num_variables = self.ast.accept(initializer)
 
