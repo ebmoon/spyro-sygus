@@ -1,6 +1,6 @@
 import ply.yacc
 
-from lexer import SpyroSygusLexer
+from spyro_lexer import SpyroSygusLexer
 from spyro_ast import *
 
 class SpyroSygusParser(object):

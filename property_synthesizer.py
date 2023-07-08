@@ -2,7 +2,7 @@ import os
 import time
 from implication import ImplicationOracle
 
-from parser import SpyroSygusParser
+from spyro_parser import SpyroSygusParser
 from synth import SynthesisOracle
 from soundness import SoundnessOracle
 from precision import PrecisionOracle
