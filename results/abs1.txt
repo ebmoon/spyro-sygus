@@ -1,0 +1,12 @@
+Property 0
+
+(lambda ((x Int) (o Int)) (or (= x o) (< (- o) o)))
+
+Property 1
+
+(lambda ((x Int) (o Int)) (or (= x (- o)) (< (- x) x)))
+
+Property 2
+
+(lambda ((x Int) (o Int)) (or (= x o) (= x (- o))))
+

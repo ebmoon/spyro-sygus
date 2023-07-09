@@ -56,8 +56,6 @@ class PropertySynthesizer:
         self.__time_last_query = 0
         self.__time_last_query_total = 0
 
-        self.__statistics = []     
-
     def __write_output(self, output):
         self.__outfile.write(output)     
 
@@ -286,15 +284,17 @@ class PropertySynthesizer:
     def run(self):
         phi_list = self.__synthesize_all_properties()
 
-        self.__write_output(str(len(phi_list)) + ",")
-        self.__write_output(str(self.__num_synthesis_total) + ",")
-        self.__write_output(f'{self.__time_synthesis_total:.2f},')
-        self.__write_output(str(self.__num_soundness_total) + ",")
-        self.__write_output(f'{self.__time_soundness_total:.2f},')
-        self.__write_output(str(self.__num_precision_total) + ",")
-        self.__write_output(f'{self.__time_precision_total:.2f},')
-        self.__write_output(f'{self.__time_synthesis + self.__time_soundness + self.__time_precision:.2f},')
-        self.__write_output(f'{self.__time_synthesis_total + self.__time_soundness_total + self.__time_precision_total:.2f},')
-        self.__write_output(f'{self.__time_last_query_total:.2f},')
+        statistics = []
 
-        self.__write_output(str(phi_list) + "\n")
+        statistics.append(len(phi_list))
+        statistics.append(self.__num_synthesis_total)
+        statistics.append(self.__time_synthesis_total)
+        statistics.append(self.__num_soundness_total)
+        statistics.append(self.__time_soundness_total)
+        statistics.append(self.__num_precision_total)
+        statistics.append(self.__time_precision_total)
+        statistics.append(self.__time_last_query_total)
+        statistics.append(self.__time_synthesis + self.__time_soundness + self.__time_precision)
+        statistics.append(self.__time_synthesis_total + self.__time_soundness_total + self.__time_precision_total)
+
+        return (phi_list, statistics)
