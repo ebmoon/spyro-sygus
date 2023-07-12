@@ -21,15 +21,15 @@ def main():
     infile = args.infile
     outfile = args.outfile
     v = args.verbose
-    write_log = args.write_log
-    timeout = args.timeout
-    inline_bnd = args.inline_bnd
-    num_atom_max = args.num_atom_max
-    disable_min = args.disable_min
     keep_neg_may = args.keep_neg_may
     slv_seed = args.slv_seed
 
-    PropertySynthesizer(infile, outfile, v, slv_seed, keep_neg_may).run()
+    phi_list, statistics = PropertySynthesizer(infile, outfile, v, slv_seed, keep_neg_may).run()
+
+    for n, phi in enumerate(phi_list):
+        outfile.write(f"Property {n}\n\n")
+        outfile.write(str(phi))
+        outfile.write("\n\n")
 
     infile.close()
     outfile.close()
