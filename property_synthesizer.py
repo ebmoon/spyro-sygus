@@ -206,7 +206,7 @@ class PropertySynthesizer:
 
                 # If neg_may is a singleton set, it doesn't need to call MaxSynth
                 # Revert back to the last sound property we found
-                if phi is None and phi_last_sound != None:
+                if phi is None and phi_last_sound is not None:
                     phi = phi_last_sound
                     neg_may = []
                     
