@@ -7,8 +7,6 @@ spyro synthesizes provably sound, most-precise specifications from given functio
 
 ## Claims
 
-## Claims
-
 ### Claims supported by this artifact
 
 The artifact supports the following claims:
@@ -35,7 +33,7 @@ The artifact requires dependencies if you try to run on your local machine
 
 * python (version >= 3.6), including packages:
     * cvc5
-    * z3
+    * z3-solver
     * numpy (only for `run_benchmarks.py`)
 
 
@@ -66,6 +64,7 @@ This will synthesize minimized properties from input file, and print the result 
 ### Understanding Spyro[SMT] input
 
 Each input to Spyro[SMT] must contain `target_fun`, `declare-language` and `declare-semantics`.
+
 
 #### Function definition
 
@@ -103,7 +102,8 @@ For example, the nonterminal `B` can produce `$t`, `$or_1 AP`, `$or_2 AP AP` or 
 
 #### Semantics definition
 
-The semantics of grammar must be provided explicitly, in form of `(nonterminal) (syntactic rule) (interpretation)`
+The semantics of grammar must be provided explicitly, in form of `(nonterminal) (syntactic rule) (interpretation)`.
+Currently, Spyro[SMT] only supports LIA and Boolean operations of SMT-LIB.
 
 ```
 (declare-semantics 

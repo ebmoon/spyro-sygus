@@ -258,7 +258,7 @@ class PropertySynthesizer:
             # If neg_must is nonempty, those examples are witness of improvement.
             if len(neg_must) == 0:
                 e_neg = self.__check_improves_predicate(phi_list, phi)
-                if e_neg:
+                if e_neg is not None:
                     neg_must = [e_neg]
                     self.__synthesis_oracle.add_negative_example(e_neg)
                     self.__synthesis_oracle.freeze_negative_example()
