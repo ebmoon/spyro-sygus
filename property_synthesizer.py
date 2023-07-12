@@ -83,7 +83,7 @@ class PropertySynthesizer:
 
         self.__time_last_query = elapsed_time
         # Return the result
-        if phi != None:
+        if phi is not None:
             return phi, elapsed_time >= self.__timeout
         else:
             return None, elapsed_time >= self.__timeout
@@ -108,7 +108,7 @@ class PropertySynthesizer:
 
         self.__time_last_query = elapsed_time
         # Return the result
-        if e_pos != None:
+        if e_pos is not None:
             self.__synthesis_oracle.add_positive_example(e_pos)
             return (e_pos, elapsed_time >= self.__timeout)
         else:
@@ -134,7 +134,7 @@ class PropertySynthesizer:
 
         self.__time_last_query = elapsed_time
         # Return the result
-        if e_neg != None:
+        if e_neg is not None:
             self.__synthesis_oracle.add_negative_example(e_neg)
             return e_neg, elapsed_time >= self.__timeout
         else:
@@ -196,7 +196,7 @@ class PropertySynthesizer:
 
         while True:
             e_pos, timeout = self.__check_soundness(phi_e)
-            if e_pos != None:
+            if e_pos is not None:
                 pos.append(e_pos)
                 
                 # First try synthesis
@@ -206,14 +206,14 @@ class PropertySynthesizer:
 
                 # If neg_may is a singleton set, it doesn't need to call MaxSynth
                 # Revert back to the last sound property we found
-                if phi == None and phi_last_sound != None:
+                if phi is None and phi_last_sound != None:
                     phi = phi_last_sound
                     neg_may = []
                     
                     self.__synthesis_oracle.clear_negative_may()
 
                 # MaxSynth is not implemented currently, and this should not be happened
-                elif phi == None:
+                elif phi is None:
                     raise NotImplementedError
 
                 phi_e = phi
@@ -237,7 +237,7 @@ class PropertySynthesizer:
 
                 phi_precision = [phi_e] if best else phi_list + [phi_e]
                 e_neg, timeout = self.__check_precision(phi_precision, phi_e, pos, neg_must, neg_may)
-                if timeout or e_neg == None:
+                if timeout or e_neg is None:
                     return (phi_e, pos, neg_must + neg_may)
                 else:   # Not precise
                     neg_may.append(e_neg)
@@ -258,7 +258,7 @@ class PropertySynthesizer:
             # If neg_must is nonempty, those examples are witness of improvement.
             if len(neg_must) == 0:
                 e_neg = self.__check_improves_predicate(phi_list, phi)
-                if e_neg != None:
+                if e_neg:
                     neg_must = [e_neg]
                     self.__synthesis_oracle.add_negative_example(e_neg)
                     self.__synthesis_oracle.freeze_negative_example()
