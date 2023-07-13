@@ -276,7 +276,7 @@ class SynthesisOracle(object):
             checker = SynthesisUnrealizabilityChecker(solver, pos, neg)
             realizable = self.ast.accept(checker)
 
-        if not check_realizable or solver.query(realizable) is sat:
+        if not check_realizable or solver.query(realizable) == sat:
             synthResult = self.synthesizer.checkSynth()
             if synthResult.hasSolution():
                 return self.synthesizer.getSynthSolution(self.spec)

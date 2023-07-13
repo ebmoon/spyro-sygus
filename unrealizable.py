@@ -213,7 +213,7 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
         return function
 
     def function_variables(self):
-        if self.function_variables_save != None:
+        if self.function_variables_save is not None:
             return self.function_variables_save
         else:
             self.function_variables_save = [
@@ -222,7 +222,7 @@ class BaseUnrealizabilityChecker(ASTVisitor, ABC):
             return self.function_variables_save
 
     def copied_function_variables(self):
-        if self.copied_function_variables_save != None:
+        if self.copied_function_variables_save is not None:
             return self.copied_function_variables_save
         else:
             fun_variables = self.function_variables()

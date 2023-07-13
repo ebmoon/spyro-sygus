@@ -79,7 +79,7 @@ class PrecisionOracle(object):
         imprecise, num_variables = self.ast.accept(initializer)
 
         query_result = solver.query(imprecise)
-        if query_result is sat:
+        if query_result == sat:
             answer = solver.get_answer().arg(1).arg(0).arg(0)
             e_neg = []
             for i in range(num_variables):
