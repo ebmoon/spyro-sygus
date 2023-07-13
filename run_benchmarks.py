@@ -99,6 +99,8 @@ def compute_median(filename, seeds, copyfile = False):
                     if copyfile:
                         seed = seeds[n]
                         shutil.copy(f"results/{name}_{seed}.txt", f"results/{name}_median.txt")
+                    
+                    break
 
 def main():
     files = [
