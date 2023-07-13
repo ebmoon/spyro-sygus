@@ -182,7 +182,7 @@ class PropertySynthesizer:
     def __add_new_sound_property(self, phi_list, phi):
         phi_list_new = []
         for phi_old in phi_list:
-            if self.__implication_oracle.check_implication([phi], phi_old) != None:
+            if self.__implication_oracle.check_implication([phi], phi_old) is not None:
                 phi_list_new.append(phi_old)
 
         return phi_list_new + [phi]
