@@ -130,7 +130,7 @@ Currently, Spyro[SMT] only supports LIA and Boolean operations of SMT-LIB.
 )
 ```
 
-### Understanding Spyro[Sketch] output
+### Understanding Spyro[SMT] output
 
 The synthesize properties are given as a function that returns a Boolean value.
 
@@ -156,7 +156,7 @@ must be true.
 
 ### Running Spyro[SMT] for benchmark set
 
-Command `python3 run_benchmarks.py -a` will run Spyro[Sketch] for every benchmark problem with three differents random seeds `[32, 64, 128]`. Running `python3 run_benchmarks.py -a` will take about 3 hours.
+Command `python3 run_benchmarks.py -a` will run Spyro[SMT] for every benchmark problem with three differents random seeds `[32, 64, 128]`. Running `python3 run_benchmarks.py -a` will take about 3 hours.
 
 This will generate files containing synthesized properties and CSV files containing statistics in the `results` directory. For example, `smt_default_32.csv` contains statistics for seed 32, and `smt_nofreeze_128.csv` contains statistics for seed 128, executed without freezing negative examples.
 It also creates files with suffix `_median`, which has median running time among three runs.
